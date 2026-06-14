@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafío Mental: Pensamiento Rápido</title>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            background-color: #1e293b;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 350px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            color: #38bdf8;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        #level { color: #a78bfa; }
+        #score { color: #34d399; }
+        #lives { color: #f87171; }
+
+        .timer-bar-container {
+            background-color: #334155;
+            height: 12px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        #timer-bar {
+            background-color: #38bdf8;
+            height: 100%;
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        #problem {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background-color: #334155;
+            color: #f8fafc;
+            border: 2px solid transparent;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background-color: #475569;
+            border-color: #38bdf8;
+            transform: scale(1.02);
+        }
+
+        #message {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            min-height: 27px;
+        }
+
+        .btn-restart {
+            background-color: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            display: none;
+            width: 100%;
+        }
+
+        .btn-restart:hover {
+            background-color: #7dd3fc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Mente Ágil 🧠</h1>
+        
+        <div class="stats">
+            <div>Nivel: <span id="level">1</span></div>
+            <div>Puntos: <span id="score">0</span></div>
+            <div>Vidas: <span id="lives">❤️❤️❤️</span></div>
+        </div>
+
+        <div class="timer-bar-container">
+            <div id="timer-bar"></div>
+        </div>
+
+        <div id="problem">?</div>
+
+        <div class="options-grid" id="options-container">
+            <button class="option-btn" onclick="checkAnswer(this)">-</button>
+            <button class="option-btn" onclick="checkAnswer(this)">-</button>
+            <button class="option-btn" onclick="checkAnswer(this)">-</button>
+            <button class="option-btn" onclick="checkAnswer(this)">-</button>
+        </div>
+
+        <div id="message"></div>
+        <button class="btn-restart" id="restart-btn" onclick="startGame()">Jugar de Nuevo</button>
+    </div>
+
+    <script>
+        // Variables del estado del juego
+        let score = 0;
+        let lives = 3;
+        let currentLevel = 1;
+        let correctAnswer = 0;
+        
+        let timer;
+        let timeLeft = 100; // Porcentaje de la barra
+        let timerDuration = 8000; // Tiempo en milisegundos por pregunta
+        let timerInterval = 100; // Actualización visual cada 100ms
+        let timeStep = 0;
+
+        // Iniciar el juego automáticamente al cargar
+        startGame();
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            document.getElementById("restart-btn").style.display = "none";
+            document.getElementById("options-container").style.pointerEvents = "auto";
+            document.getElementById("message").innerText = "";
+            updateStats();
+            nextQuestion();
+        }
+
+        function updateStats() {
+            document.getElementById("score").innerText = score;
+            document.getElementById("level").innerText = currentLevel;
+            document.getElementById("lives").innerText = "❤️".repeat(lives) || "❌";
+        }
+
+        function nextQuestion() {
+            if (lives <= 0) return gameOver();
+
+            // Ajustar dificultad según el nivel
+            let num1, num2, operation;
+            let displayOperation = "";
+
+            if (score >= 120) {
+                currentLevel = 3;
+                timerDuration = 4500; // Mucho más rápido
+            } else if (score >= 50) {
+                currentLevel = 2;
+                timerDuration = 6000; // Intermedio
+            } else {
+                currentLevel = 1;
+                timerDuration = 8000; // Tiempo generoso al inicio
+            }
+            updateStats();
+
+            // Generación de problemas según nivel
+            if (currentLevel === 1) {
+                num1 = Math.floor(Math.random() * 15) + 5;
+                num2 = Math.floor(Math.random() * 15) + 1;
+                operation = Math.random() > 0.5 ? '+' : '-';
+                correctAnswer = operation === '+' ? num1 + num2 : num1 - num2;
+                displayOperation = `${num1} ${operation} ${num2}`;
+            } 
+            else if (currentLevel === 2) {
+                num1 = Math.floor(Math.random() * 10) + 2;
+                num2 = Math.floor(Math.random() * 9) + 2;
+                operation = Math.random() > 0.5 ? 'x' : '+';
+                correctAnswer = operation === 'x' ? num1 * num2 : num1 + num2 + 10;
+                displayOperation = operation === 'x' ? `${num1} × ${num2}` : `${num1} + ${num2} + 10`;
+            } 
+            else {
+                // Nivel 3: Operaciones combinadas rápidas
+                num1 = Math.floor(Math.random() * 5) + 2; // 2 a 6
+                num2 = Math.floor(Math.random() * 5) + 2; // 2 a 6
+                let num3 = Math.floor(Math.random() * 10) + 1;
+                correctAnswer = (num1 * num2) - num3;
+                displayOperation = `(${num1} × ${num2}) - ${num3}`;
+            }
+
+            document.getElementById("problem").innerText = displayOperation + " = ?";
+            generateOptions(correctAnswer);
+            startTimer();
+        }
+
+        function generateOptions(correct) {
+            let options = [correct];
+            
+            // Generar 3 respuestas falsas pero creíbles (cercanas a la real)
+            while (options.length < 4) {
+                let deviation = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                let fakeAnswer = correct + deviation;
+                if (!options.includes(fakeAnswer)) {
+                    options.push(fakeAnswer);
+                }
+            }
+
+            // Mezclar las opciones de forma aleatoria
+            options.sort(() => Math.random() - 0.5);
+
+            const buttons = document.querySelectorAll(".option-btn");
+            buttons.forEach((btn, index) => {
+                btn.innerText = options[index];
+                btn.style.backgroundColor = "#334155"; // Restaurar color
+            });
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = 100;
+            timeStep = (timerInterval / timerDuration) * 100;
+            document.getElementById("timer-bar").style.width = "100%";
+            document.getElementById("timer-bar").style.backgroundColor = "#38bdf8";
+
+            timer = setInterval(() => {
+                timeLeft -= timeStep;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    document.getElementById("timer-bar").style.width = "0%";
+                    handleFail("¡Se acabó el tiempo! ⏰");
+                } else {
+                    document.getElementById("timer-bar").style.width = timeLeft + "%";
+                    if (timeLeft < 30) {
+                        document.getElementById("timer-bar").style.backgroundColor = "#f87171"; // Alerta roja
+                    }
+                }
+            }, timerInterval);
+        }
+
+        function checkAnswer(button) {
+            clearInterval(timer);
+            const selectedAnswer = parseInt(button.innerText);
+
+            if (selectedAnswer === correctAnswer) {
+                score += 10;
+                document.getElementById("message").style.color = "#34d399";
+                document.getElementById("message").innerText = "¡Correcto! ⚡";
+                button.style.backgroundColor = "#059669";
+                
+                // Pequeña pausa antes de la siguiente pregunta para ver el acierto
+                document.getElementById("options-container").style.pointerEvents = "none";
+                setTimeout(() => {
+                    document.getElementById("options-container").style.pointerEvents = "auto";
+                    document.getElementById("message").innerText = "";
+                    nextQuestion();
+                }, 600);
+            } else {
+                button.style.backgroundColor = "#dc2626";
+                handleFail("¡Respuesta incorrecta! ❌");
+            }
+        }
+
+        function handleFail(msg) {
+            lives--;
+            updateStats();
+            document.getElementById("message").style.color = "#f87171";
+            document.getElementById("message").innerText = msg;
+
+            document.getElementById("options-container").style.pointerEvents = "none";
+            setTimeout(() => {
+                document.getElementById("options-container").style.pointerEvents = "auto";
+                document.getElementById("message").innerText = "";
+                if (lives > 0) {
+                    nextQuestion();
+                } else {
+                    gameOver();
+                }
+            }, 1200);
+        }
+
+        function gameOver() {
+            clearInterval(timer);
+            document.getElementById("problem").innerText = "💥 ¡Fin del Juego!";
+            document.getElementById("message").style.color = "#a78bfa";
+            document.getElementById("message").innerText = `Lograste ${score} puntos.`;
+            document.getElementById("options-container").style.pointerEvents = "none";
+            document.getElementById("restart-btn").style.display = "block";
+        }
+    </script>
+</body>
+</html>
