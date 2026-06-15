@@ -1880,6 +1880,7 @@ export default function AdminPage() {
         minefieldEvents: data.config?.minefieldEvents || [],
         diceCombatEvents: data.config?.diceCombatEvents || [],
         circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
+        networkCardEvents: data.config?.networkCardEvents || [],
         globalMusicUrl: data.config?.globalMusicUrl || '',
         victorySound: data.config?.victorySound || '',
         defeatSound: data.config?.defeatSound || '',
