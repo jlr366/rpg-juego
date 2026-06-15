@@ -14,7 +14,6 @@ const SPEED_INC        = 0.0004
 const MAX_LIVES        = 3
 const INVINCIBLE_F     = 90   // frames of invincibility after hit
 const SHIELD_F         = 150  // frames a shield lasts
-const SCORE_MULT_F     = 200  // frames score x2 lasts
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type RunnerResult = 'win' | 'loss' | 'p1_wins' | 'p2_wins'
@@ -58,7 +57,7 @@ interface BgCloud { x: number; y: number; w: number; spd: number }
 interface Player {
   x: number; y: number; vy: number
   jumping: boolean; alive: boolean; score: number
-  lives: number; invincible: number; shield: number; scoreMult: number
+  lives: number; invincible: number; shield: number
 }
 
 // ── Draw helpers ───────────────────────────────────────────────────────────────
@@ -205,9 +204,9 @@ function loadIcons() {
 }
 
 const COLLECTIBLE_COLORS: Record<CollectibleType, { bg: string; glow: string; label: string }> = {
-  lambda: { bg: '#4c1d95', glow: '#a78bfa', label: '+VIDA' },
+  lambda: { bg: '#4c1d95', glow: '#a78bfa', label: '+5 PTS' },
   s3:     { bg: '#14532d', glow: '#4ade80', label: 'ESCUDO' },
-  ec2:    { bg: '#7c2d12', glow: '#fb923c', label: 'x2 PTS' },
+  ec2:    { bg: '#7c2d12', glow: '#fb923c', label: '+10 PTS' },
 }
 
 function drawCollectible(ctx: CanvasRenderingContext2D, item: Collectible, frame: number) {
@@ -329,7 +328,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, frame: number, bgClouds: 
   }
 }
 
-function drawHUD(ctx: CanvasRenderingContext2D, p1: Player, p2: Player | null, twoPlayer: boolean, frame: number) {
+function drawHUD(ctx: CanvasRenderingContext2D, p1: Player, p2: Player | null, twoPlayer: boolean, frame: number, targetScore: number) {
   // P1 lives (hearts)
   ctx.font = 'bold 11px monospace'
   ctx.textAlign = 'left'
@@ -342,20 +341,18 @@ function drawHUD(ctx: CanvasRenderingContext2D, p1: Player, p2: Player | null, t
     ctx.fillStyle = '#4ade80'
     ctx.fillText('🛡', 6 + MAX_LIVES * 14 + 2, 14)
   }
-  // P1 score mult
-  if (p1.scoreMult > 1) {
-    ctx.fillStyle = '#fb923c'
-    ctx.font = 'bold 9px monospace'
-    ctx.fillText('x2', 6 + MAX_LIVES * 14 + 18, 14)
-  }
 
-  // Score (top right)
-  const score = Math.floor(p1.score / 10)
+  // Score and target (top right)
+  const score = p1.score
   const hi = parseInt(localStorage.getItem('rpg-runner-highscore') || '0')
   ctx.fillStyle = '#ffd99a'
   ctx.font = 'bold 13px monospace'
   ctx.textAlign = 'right'
-  ctx.fillText(`${score}`, CANVAS_W - 6, 14)
+  if (targetScore < 999999) {
+    ctx.fillText(`${score}/${targetScore}`, CANVAS_W - 6, 14)
+  } else {
+    ctx.fillText(`${score} pts`, CANVAS_W - 6, 14)
+  }
   ctx.fillStyle = '#475569'
   ctx.font = '9px monospace'
   ctx.fillText(`HI ${Math.max(hi, score)}`, CANVAS_W - 6, 26)
@@ -370,7 +367,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, p1: Player, p2: Player | null, t
     }
     ctx.fillStyle = '#f87171'
     ctx.font = 'bold 9px monospace'
-    ctx.fillText(`P2: ${Math.floor(p2.score / 10)}`, CANVAS_W - 60, 108)
+    ctx.fillText(`P2: ${p2.score} pts`, CANVAS_W - 60, 108)
   }
 
   // P1/P2 label
@@ -386,9 +383,9 @@ function drawHUD(ctx: CanvasRenderingContext2D, p1: Player, p2: Player | null, t
 
 // ── Tutorial items legend ──────────────────────────────────────────────────────
 const COLLECTIBLE_INFO = [
-  { type: 'lambda' as CollectibleType, color: '#a78bfa', label: 'Lambda', desc: '+1 Vida extra' },
-  { type: 's3'     as CollectibleType, color: '#4ade80', label: 'S3',     desc: 'Escudo temporal' },
-  { type: 'ec2'    as CollectibleType, color: '#fb923c', label: 'EC2',    desc: 'Puntos x2' },
+  { type: 'ec2'    as CollectibleType, color: '#fb923c', label: 'EC2',    desc: '+10 puntos al recoger' },
+  { type: 'lambda' as CollectibleType, color: '#a78bfa', label: 'Lambda', desc: '+5 puntos & +1 Vida' },
+  { type: 's3'     as CollectibleType, color: '#4ade80', label: 'S3',     desc: 'Escudo temporal (no da puntos)' },
 ]
 
 // ── Main Component ─────────────────────────────────────────────────────────────
@@ -403,7 +400,7 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
 
   const makePlayer = (x: number, y: number): Player => ({
     x, y, vy: 0, jumping: false, alive: true, score: 0,
-    lives: MAX_LIVES, invincible: 0, shield: 0, scoreMult: 1,
+    lives: MAX_LIVES, invincible: 0, shield: 0,
   })
 
   const gameRef = useRef({
@@ -479,12 +476,8 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
         if (!p.alive) return
         p.vy += GRAVITY; p.y += p.vy
         if (p.y >= ground) { p.y = ground; p.vy = 0; p.jumping = false }
-        p.score += p.scoreMult
         if (p.invincible > 0) p.invincible--
         if (p.shield > 0) p.shield--
-        if (p.scoreMult > 1 && p.invincible === 0 && p.shield === 0) {
-          // scoreMult resets tracked separately via SCORE_MULT_F — handled at pickup
-        }
       }
       updatePlayer(g.p1, groundP1)
       if (g.twoPlayer) updatePlayer(g.p2, groundP2)
@@ -522,9 +515,9 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
           if (c.collected) return
           if (Math.abs(p.x + 14 - c.x - 14) < 22 && Math.abs(p.y + 16 - c.y - 14) < 28) {
             c.collected = true
-            if (c.type === 'lambda') { p.lives = Math.min(MAX_LIVES, p.lives + 1) }
+            if (c.type === 'lambda') { p.lives = Math.min(MAX_LIVES, p.lives + 1); p.score += 5 }
             else if (c.type === 's3') { p.shield = SHIELD_F }
-            else if (c.type === 'ec2') { p.scoreMult = 2; window.setTimeout(() => { p.scoreMult = 1 }, SCORE_MULT_F * 16) }
+            else if (c.type === 'ec2') { p.score += 10 }
           }
         })
       }
@@ -550,15 +543,26 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
       if (g.twoPlayer) checkHit(g.p2, laneY2, 1)
 
       // ── Win/lose ──
-      const p1Score = Math.floor(g.p1.score / 10)
-      const p2Score = Math.floor(g.p2.score / 10)
+      const p1Score = g.p1.score
+      const p2Score = g.p2.score
 
       if (!g.twoPlayer) {
+        // Win: reached target score
+        if (p1Score >= g.targetScore) {
+          g.running = false
+          if (p1Score > parseInt(localStorage.getItem('rpg-runner-highscore') || '0'))
+            localStorage.setItem('rpg-runner-highscore', String(p1Score))
+          setResult(`¡Victoria! — ${p1Score} pts`)
+          setPhase('ended')
+          onFinish('win', wageredItemId || undefined)
+          return
+        }
+        // Lose: ran out of lives
         if (!g.p1.alive) {
           g.running = false
           if (p1Score > parseInt(localStorage.getItem('rpg-runner-highscore') || '0'))
             localStorage.setItem('rpg-runner-highscore', String(p1Score))
-          setResult(`Puntuación: ${p1Score}`)
+          setResult(`Game Over — ${p1Score} pts`)
           setPhase('ended')
           onFinish('loss', wageredItemId || undefined)
           return
@@ -592,7 +596,7 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
       if (g.twoPlayer && g.p2.alive) drawEngineer(ctx, g.p2.x, g.p2.y, g.frame, g.p2.jumping, g.p2.invincible, g.p2.shield, true)
 
       // HUD
-      drawHUD(ctx, g.p1, g.twoPlayer ? g.p2 : null, g.twoPlayer, g.frame)
+      drawHUD(ctx, g.p1, g.twoPlayer ? g.p2 : null, g.twoPlayer, g.frame, g.targetScore)
 
       animId = requestAnimationFrame(loop)
     }
@@ -651,11 +655,12 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
             </div>
             {/* Lives */}
             <div className="rounded border border-pink-500/30 bg-[#150d14] p-2">
-              <div className="mb-1 font-black text-pink-400 uppercase">❤ Sistema de Vidas</div>
+              <div className="mb-1 font-black text-pink-400 uppercase">❤ Vidas & Puntos</div>
               <div className="text-slate-300">
                 <div>Comienzas con <span className="text-pink-300 font-bold">3 vidas</span></div>
                 <div>Golpe → parpadeo temporal</div>
-                <div>Lambda → recupera 1 vida</div>
+                <div><span className="text-orange-300 font-bold">EC2</span> → +10 puntos</div>
+                <div><span className="text-purple-300 font-bold">Lambda</span> → +5 pts & +1 vida</div>
                 <div className="text-pink-500">0 vidas = Game Over</div>
               </div>
             </div>
@@ -694,6 +699,11 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
           <p className="text-center text-xs text-cyan-300">
             Esquiva las nubes de error · Recoge servicios AWS · Sobrevive con 3 vidas
           </p>
+          {event.targetScore && (
+            <p className="text-center text-xs font-black text-yellow-300">
+              🎯 Meta: {event.targetScore} pts — EC2 vale 10 pts · Lambda vale 5 pts
+            </p>
+          )}
 
           {/* Wager */}
           <div className="w-full max-w-xs rounded border border-orange-800/40 bg-[#0d1830] p-2">
@@ -737,12 +747,12 @@ export const RunnerGame: React.FC<RunnerGameProps> = ({ event, onFinish, invento
   // ── End screen ─────────────────────────────────────────────────────────────
   if (phase === 'ended') {
     const hi = parseInt(localStorage.getItem('rpg-runner-highscore') || '0')
-    const won = result.includes('P1 gana')
+    const won = result.startsWith('¡Victoria!') || result.includes('P1 gana')
     return (
       <div className="aspect-video w-full bg-[#060c1a] p-4 font-mono text-white">
         <div className="flex h-full flex-col items-center justify-center rounded border-2 border-rose-500/40 bg-[#0a1428] p-4 gap-3">
           <div className={`text-xl font-black ${won ? 'text-emerald-300' : 'text-rose-300'}`}>
-            {won ? '🏆 ¡Conexión Estable!' : '☁ ¡Error en producción!'}
+            {won ? '🏆 ¡Meta alcanzada!' : '☁ ¡Error en producción!'}
           </div>
           <p className="text-lg font-black text-orange-300">{result}</p>
           <p className="text-xs text-slate-500">🏆 Récord: {hi} pts</p>
