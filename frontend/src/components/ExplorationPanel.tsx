@@ -2223,6 +2223,8 @@ export function MemoryDuelBoard({
   const [finished, setFinished] = useState(false)
   const [wageredItemId, setWageredItemId] = useState('')
   const [started, setStarted] = useState(false)
+  // AI only remembers cards revealed during play (not full-deck cheating)
+  const aiMemory = useRef<Record<number, string>>({})
 
   const turnSeconds = Math.max(5, Number(event.memoryTurnSeconds) || 12)
   const wageredItem = inventory.find(item => item.id === wageredItemId) || null
@@ -2239,6 +2241,7 @@ export function MemoryDuelBoard({
     setStarted(false)
     setWageredItemId('')
     setMessage('Elige una apuesta y pulsa Empezar juego 8-bit.')
+    aiMemory.current = {}
   }, [event.key, turnSeconds])
 
   useEffect(() => {
@@ -2275,22 +2278,47 @@ export function MemoryDuelBoard({
         .filter(entry => !entry.card.matchedBy)
       if (available.length < 2) {
         setTurn('player')
+        setTimeLeft(turnSeconds)
         return
       }
 
-      const first = available[Math.floor(Math.random() * available.length)]
-      const matching = available.find(entry => entry.index !== first.index && entry.card.symbol === first.card.symbol)
-      const enemyFindsPair = Boolean(matching) && Math.random() < 0.55
-      const second = enemyFindsPair && matching
-        ? matching
-        : available.filter(entry => entry.index !== first.index)[Math.floor(Math.random() * (available.length - 1))]
+      // Pick first card randomly from unmatched cards
+      const firstEntry = available[Math.floor(Math.random() * available.length)]
+      aiMemory.current[firstEntry.index] = firstEntry.card.symbol
 
-      if (second && first.card.symbol === second.card.symbol) {
-        setDeck(prev => prev.map((card, index) => index === first.index || index === second.index ? { ...card, matchedBy: 'enemy' } : card))
+      // Look for the matching card in AI's memory (only revealed cards are known)
+      const memoryMatch = Object.entries(aiMemory.current).find(([idxStr, sym]) => {
+        const idx = Number(idxStr)
+        return sym === firstEntry.card.symbol && idx !== firstEntry.index && !deck[idx]?.matchedBy
+      })
+
+      // AI uses memory with 60% probability — results in ~50% win rate vs average player
+      let secondEntry: { card: { symbol: string; matchedBy: string; id: string }; index: number } | undefined
+      if (memoryMatch && Math.random() < 0.60) {
+        const matchIdx = Number(memoryMatch[0])
+        secondEntry = available.find(e => e.index === matchIdx)
+      }
+      if (!secondEntry) {
+        const others = available.filter(e => e.index !== firstEntry.index)
+        secondEntry = others[Math.floor(Math.random() * others.length)]
+      }
+
+      if (!secondEntry) {
+        setTurn('player')
+        setTimeLeft(turnSeconds)
+        return
+      }
+
+      // AI also "sees" what it flipped
+      aiMemory.current[secondEntry.index] = secondEntry.card.symbol
+
+      if (firstEntry.card.symbol === secondEntry.card.symbol) {
+        setDeck(prev => prev.map((card, index) =>
+          index === firstEntry.index || index === secondEntry!.index ? { ...card, matchedBy: 'enemy' } : card))
         setEnemyScore(score => score + 1)
-        setMessage(`${event.memoryEnemyName || 'El rival'} encontro una pareja.`)
+        setMessage(`${event.memoryEnemyName || 'El rival'} encontró una pareja.`)
       } else {
-        setMessage(`${event.memoryEnemyName || 'El rival'} fallo. Vuelve tu turno.`)
+        setMessage(`${event.memoryEnemyName || 'El rival'} falló. Vuelve tu turno.`)
       }
       setSelected([])
       setTurn('player')
@@ -2304,6 +2332,9 @@ export function MemoryDuelBoard({
     if (!started || finished || turn !== 'player') return
     if (deck[index].matchedBy || selected.includes(index) || selected.length >= 2) return
 
+    // AI observes every card the player flips
+    aiMemory.current[index] = deck[index].symbol
+
     const nextSelected = [...selected, index]
     setSelected(nextSelected)
 
@@ -2315,9 +2346,9 @@ export function MemoryDuelBoard({
         if (first.symbol === second.symbol) {
           setDeck(prev => prev.map((card, cardIndex) => cardIndex === firstIndex || cardIndex === secondIndex ? { ...card, matchedBy: 'player' } : card))
           setPlayerScore(score => score + 1)
-          setMessage('Acertaste una pareja. El rival juega ahora.')
+          setMessage('¡Acertaste! Ahora juega el rival.')
         } else {
-          setMessage('No coinciden. El rival juega ahora.')
+          setMessage('No coinciden. Ahora juega el rival.')
         }
         setSelected([])
         setTurn('enemy')
