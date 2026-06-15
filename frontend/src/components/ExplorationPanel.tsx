@@ -18,6 +18,7 @@ import { TechSnakeGame, TechSnakeEventConfig, SnakeResult } from './TechSnakeGam
 import { MinefieldGame, MinefieldEventConfig, MinefieldResult } from './MinefieldGame'
 import { DiceCombatGame, DiceCombatEventConfig, DiceCombatResult } from './DiceCombatGame'
 import { CircuitPuzzleGame, CircuitPuzzleEventConfig, CircuitPuzzleResult } from './CircuitPuzzleGame'
+import { NetworkCardGame, NetworkCardEventConfig, NetworkCardResult } from './NetworkCardGame'
 import { useMusic } from '../context/MusicProvider'
 import { API_BASE_URL } from '../config'
 import { useAuth } from '../context/AuthProvider'
@@ -142,6 +143,7 @@ interface StoryConfig {
   quizEvents?: TechQuizEventConfig[]
   snakeEvents?: TechSnakeEventConfig[]
   minefieldEvents?: MinefieldEventConfig[]
+  networkCardEvents?: NetworkCardEventConfig[]
   archEvents?: any[]
 }
 
@@ -356,6 +358,8 @@ export const ExplorationPanel: React.FC = () => {
   const [resolvedDiceCombatEvents, setResolvedDiceCombatEvents] = useState<Record<string, boolean>>({})
   const [activeCircuitPuzzleEvent, setActiveCircuitPuzzleEvent] = useState<CircuitPuzzleEventConfig | null>(null)
   const [resolvedCircuitPuzzleEvents, setResolvedCircuitPuzzleEvents] = useState<Record<string, boolean>>({})
+  const [activeNetworkCardEvent, setActiveNetworkCardEvent] = useState<NetworkCardEventConfig | null>(null)
+  const [resolvedNetworkCardEvents, setResolvedNetworkCardEvents] = useState<Record<string, boolean>>({})
   const [resolvedRunnerEvents, setResolvedRunnerEvents] = useState<Record<string, boolean>>({})
   const [pendingGameReward, setPendingGameReward] = useState<{ name: string; type: string; power: number; rarity?: string; description?: string } | null>(null)
   const [gameResultPending, setGameResultPending] = useState(false)
@@ -581,6 +585,7 @@ export const ExplorationPanel: React.FC = () => {
     setActiveMinefieldEvent(null)
     setActiveDiceCombatEvent(null)
     setActiveCircuitPuzzleEvent(null)
+    setActiveNetworkCardEvent(null)
     setPendingGameReward(null)
     setGameResultPending(false)
     setLastPenaltyHP(0)
@@ -878,6 +883,25 @@ export const ExplorationPanel: React.FC = () => {
     }
   }
 
+  const finishNetworkCard = (event: NetworkCardEventConfig, result: NetworkCardResult) => {
+    const evKey = `${event.sceneKey}:${event.key}`
+    setActiveNetworkCardEvent(null)
+    setResolvedNetworkCardEvents(prev => ({ ...prev, [evKey]: true }))
+    if (result === 'win') {
+      if (event.rewardItemName) {
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Dominaste la seguridad de red!')
+      } else {
+        setEventResultText(event.winText || '¡Dominaste la seguridad de red!')
+        setGameResultPending(true)
+      }
+    } else if (result === 'loss') {
+      applyGameLoss(event.loseText || 'La red AWS te superó.')
+    } else {
+      setEventResultText('Duelo igualado — nadie domina la red.')
+      setGameResultPending(true)
+    }
+  }
+
   /**
    * resolveInitialChoice
    * Start combat with sceneKey awareness so death drops items into node.
@@ -1055,6 +1079,8 @@ export const ExplorationPanel: React.FC = () => {
     setResolvedDiceCombatEvents({})
     setActiveCircuitPuzzleEvent(null)
     setResolvedCircuitPuzzleEvents({})
+    setActiveNetworkCardEvent(null)
+    setResolvedNetworkCardEvents({})
     setPendingGameReward(null)
     setGameResultPending(false)
     setLastPenaltyHP(0)
@@ -1167,6 +1193,13 @@ export const ExplorationPanel: React.FC = () => {
     !resolvedCircuitPuzzleEvents[`${event.sceneKey}:${event.key}`]
   ))
   const currentCircuitPuzzleEvent = configuredCircuitPuzzleEvents[0] || null
+
+  const configuredNetworkCardEvents = (storyConfig?.networkCardEvents || []).filter(event => (
+    event.sceneKey === currentSceneKey &&
+    !resolvedNetworkCardEvents[`${event.sceneKey}:${event.key}`]
+  ))
+  const currentNetworkCardEvent = configuredNetworkCardEvents[0] || null
+
   const fledCurrentEnemies = configuredCurrentEnemies.filter(enemy => fledConfiguredEnemies[`${enemy.sceneKey}:${enemy.key}`])
   const configuredNodeItems = storyConfig?.nodeItems?.filter(item => (
     item.sceneKey === currentSceneKey &&
@@ -1274,6 +1307,14 @@ export const ExplorationPanel: React.FC = () => {
     if (runnerDismissedRef.current === `${currentCircuitPuzzleEvent.sceneKey}:${currentCircuitPuzzleEvent.key}`) return
     setActiveCircuitPuzzleEvent(currentCircuitPuzzleEvent)
   }, [activeCircuitPuzzleEvent, activeDiceCombatEvent, activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentDiceCombatEvent, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+
+  useEffect(() => {
+    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent || configuredEnding || nodeStage !== 'initial') return
+    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent || currentDiceCombatEvent || currentCircuitPuzzleEvent) return
+    if (!currentNetworkCardEvent) return
+    if (runnerDismissedRef.current === `${currentNetworkCardEvent.sceneKey}:${currentNetworkCardEvent.key}`) return
+    setActiveNetworkCardEvent(currentNetworkCardEvent)
+  }, [activeCircuitPuzzleEvent, activeDiceCombatEvent, activeMemoryEvent, activeMinefieldEvent, activeNetworkCardEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentDiceCombatEvent, currentMemoryEvent, currentMinefieldEvent, currentNetworkCardEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
 
   useEffect(() => {
     if (lastCombatResult === 'enemy_victory' && activeConfiguredEnemyKeyRef.current) {
@@ -1569,7 +1610,7 @@ export const ExplorationPanel: React.FC = () => {
       </div>
 
       {/* ── Active game overlay — expands to full screen while a mini-game runs ── */}
-      {(activeRunnerEvent || activeMemoryEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent) && (
+      {(activeRunnerEvent || activeMemoryEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent) && (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/85 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-4xl px-4 py-6">
             {activeRunnerEvent && (
@@ -1624,6 +1665,12 @@ export const ExplorationPanel: React.FC = () => {
                 playerMaxHealth={maxHealth}
                 onFinish={(result) => finishCircuitPuzzle(activeCircuitPuzzleEvent, result)}
                 onDamagePlayer={(dmg) => injure(dmg, step)}
+              />
+            )}
+            {activeNetworkCardEvent && (
+              <NetworkCardGame
+                event={activeNetworkCardEvent}
+                onFinish={(result) => finishNetworkCard(activeNetworkCardEvent, result)}
               />
             )}
           </div>
@@ -1729,7 +1776,7 @@ export const ExplorationPanel: React.FC = () => {
         </div>
       )}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
         <div className="mt-4 rounded border-2 border-amber-400/40 bg-[#211408]/85 p-4 shadow-inner">
           <div className="mb-3 font-semibold text-amber-100">🎁 Objetos en este camino</div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -1762,7 +1809,7 @@ export const ExplorationPanel: React.FC = () => {
       )}
 
       {/* Always show current node options (no click required) */}
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length > 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length > 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border-2 border-[#8f5728]/80 bg-[#160b08]/80 p-4 shadow-inner">
           <div className="flex flex-col gap-2">
             {configuredDecisions.map((decision, index) => (
@@ -1797,7 +1844,7 @@ export const ExplorationPanel: React.FC = () => {
         </div>
       )}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length === 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length === 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border border-[#8f5728]/80 bg-[#160b08]/80 p-4 text-sm text-[#ffe7bd]">
           Este nodo no tiene decisiones configuradas en el admin.
         </div>
