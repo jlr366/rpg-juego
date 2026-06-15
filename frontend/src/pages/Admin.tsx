@@ -11,6 +11,7 @@ import { ArchitectureGame } from '../components/ArchitectureGame'
 import { MinefieldGame } from '../components/MinefieldGame'
 import { DiceCombatGame, DiceCombatEventConfig } from '../components/DiceCombatGame'
 import { CircuitPuzzleGame, CircuitPuzzleEventConfig } from '../components/CircuitPuzzleGame'
+import { NetworkCardGame, NetworkCardEventConfig } from '../components/NetworkCardGame'
 
 interface SceneConfig {
   key: string
@@ -205,6 +206,7 @@ interface StoryConfig {
   minefieldEvents?: MinefieldEventConfig[]
   diceCombatEvents?: DiceCombatEventConfig[]
   circuitPuzzleEvents?: CircuitPuzzleEventConfig[]
+  networkCardEvents?: NetworkCardEventConfig[]
   globalMusicUrl?: string
   victorySound?: string
   defeatSound?: string
@@ -227,6 +229,7 @@ const emptyConfig: StoryConfig = {
   minefieldEvents: [],
   diceCombatEvents: [],
   circuitPuzzleEvents: [],
+  networkCardEvents: [],
 }
 
 const blankScene: SceneConfig = {
@@ -1792,6 +1795,7 @@ export default function AdminPage() {
           minefieldEvents: data.config?.minefieldEvents || [],
           diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
+          networkCardEvents: data.config?.networkCardEvents || [],
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
@@ -1930,6 +1934,7 @@ export default function AdminPage() {
           minefieldEvents: data.config?.minefieldEvents || [],
           diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
+          networkCardEvents: data.config?.networkCardEvents || [],
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
@@ -2363,6 +2368,32 @@ export default function AdminPage() {
     }))
   }
 
+  const addNetworkCardToNode = (sceneKey: string) => {
+    setConfig(prev => ({
+      ...prev,
+      networkCardEvents: [...(prev.networkCardEvents || []), {
+        key: `netcard${(prev.networkCardEvents || []).length + 1}`,
+        sceneKey,
+        title: 'Duelo de Red AWS',
+        prompt: '',
+        rounds: 3,
+        rewardItemName: '',
+        rewardItemType: 'misc',
+        rewardItemPower: 0,
+        winText: '¡Dominaste la seguridad de red!',
+        loseText: 'La red AWS te superó.',
+      }],
+    }))
+    setMessage(`Duelo de Red AWS agregado al nodo ${sceneKey}.`)
+  }
+
+  const updateNetworkCardEvent = (index: number, patch: Partial<NetworkCardEventConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      networkCardEvents: (prev.networkCardEvents || []).map((e, i) => i === index ? { ...e, ...patch } : e),
+    }))
+  }
+
   const createNodeFromFlow = (x: number, y: number, flowPage = 1) => {
     const key = nextSceneKey()
     setConfig(prev => ({
@@ -2435,6 +2466,10 @@ export default function AdminPage() {
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
 
   const selectedCircuitPuzzleEvents = (config.circuitPuzzleEvents || [])
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => event.sceneKey === selectedSceneKey)
+
+  const selectedNetworkCardEvents = (config.networkCardEvents || [])
     .map((event, index) => ({ event, index }))
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
 
@@ -2961,6 +2996,7 @@ export default function AdminPage() {
                       <option value="minefield">💣 Combate Minesweeper</option>
                       <option value="dice">🎲 Combate de Dados</option>
                       <option value="circuit">🔌 Laboratorio de Circuito</option>
+                      <option value="networkcard">🃏 Duelo de Red AWS</option>
                     </select>
                     <button
                       onClick={() => {
@@ -2975,6 +3011,7 @@ export default function AdminPage() {
                         else if (pendingGame === 'minefield') addMinefieldToNode(selectedSceneKey)
                         else if (pendingGame === 'dice') addDiceCombatToNode(selectedSceneKey)
                         else if (pendingGame === 'circuit') addCircuitPuzzleToNode(selectedSceneKey)
+                        else if (pendingGame === 'networkcard') addNetworkCardToNode(selectedSceneKey)
                         setPendingGame('')
                       }}
                       disabled={!pendingGame}
@@ -2985,7 +3022,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Juegos asignados al nodo */}
-                  {selectedMemoryEvents.length === 0 && selectedRunnerEvents.length === 0 && selectedQuizEvents.length === 0 && selectedSnakeEvents.length === 0 && selectedArchEvents.length === 0 && selectedMinefieldEvents.length === 0 && selectedDiceCombatEvents.length === 0 && selectedCircuitPuzzleEvents.length === 0 ? (
+                  {selectedMemoryEvents.length === 0 && selectedRunnerEvents.length === 0 && selectedQuizEvents.length === 0 && selectedSnakeEvents.length === 0 && selectedArchEvents.length === 0 && selectedMinefieldEvents.length === 0 && selectedDiceCombatEvents.length === 0 && selectedCircuitPuzzleEvents.length === 0 && selectedNetworkCardEvents.length === 0 ? (
                     <div className="px-1 text-[11px] italic text-slate-500">Sin juegos asignados a este nodo.</div>
                   ) : (
                     <div className="space-y-2">
@@ -3366,6 +3403,52 @@ export default function AdminPage() {
                           )}
                         </div>
                       ))}
+
+                      {selectedNetworkCardEvents.map(({ event, index }) => (
+                        <div key={`nc-${index}`} className="rounded border border-indigo-800/40 bg-slate-900/80">
+                          <div className="flex items-center justify-between border-b border-indigo-800/30 px-3 py-1.5">
+                            <span className="text-[11px] font-bold text-indigo-300">🃏 Duelo de Red AWS</span>
+                            <div className="flex gap-1">
+                              <button onClick={() => setTestingCard(testingCard === `nc-${index}` ? null : `nc-${index}`)} className={`rounded px-2 py-0.5 text-[10px] font-bold transition ${testingCard === `nc-${index}` ? 'bg-indigo-600 text-white' : 'bg-indigo-900/60 text-indigo-200 hover:bg-indigo-700'}`}>{testingCard === `nc-${index}` ? '▲ Cerrar' : '▶ Probar'}</button>
+                              <button onClick={() => setConfig(prev => ({ ...prev, networkCardEvents: (prev.networkCardEvents || []).filter((_, i) => i !== index) }))} className="rounded bg-red-700/50 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-600">Eliminar</button>
+                            </div>
+                          </div>
+                          <div className="grid gap-2 p-2 md:grid-cols-2">
+                            <LabeledInput label="Clave" value={event.key || ''} onChange={v => updateNetworkCardEvent(index, { key: v })} placeholder="netcard1" />
+                            <LabeledInput label="Título" value={event.title || ''} onChange={v => updateNetworkCardEvent(index, { title: v })} placeholder="Duelo de Red AWS" />
+                            <LabeledInput label="Prompt" value={event.prompt || ''} onChange={v => updateNetworkCardEvent(index, { prompt: v })} placeholder="Demuestra que entiendes las capas de red..." />
+                            <LabeledNumber label="Rondas (mejor de N)" value={event.rounds ?? 3} onChange={v => updateNetworkCardEvent(index, { rounds: Math.max(1, Math.min(5, v)) })} />
+                            <label className="space-y-1 text-xs font-semibold text-slate-300">
+                              <span>Premio (item)</span>
+                              <select value={event.rewardItemName || ''} onChange={e => {
+                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                updateNetworkCardEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                              }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
+                                <option value="">-- Sin premio --</option>
+                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
+                                  <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                <optgroup label="Pociones">
+                                  {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
+                                    <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
+                                  ))}
+                                </optgroup>
+                              </select>
+                            </label>
+                            <LabeledInput label="Texto si gana" value={event.winText || ''} onChange={v => updateNetworkCardEvent(index, { winText: v })} placeholder="¡Dominaste la seguridad de red!" />
+                            <LabeledInput label="Texto si pierde" value={event.loseText || ''} onChange={v => updateNetworkCardEvent(index, { loseText: v })} placeholder="La red AWS te superó." />
+                          </div>
+                          {testingCard === `nc-${index}` && (
+                            <div className="border-t border-indigo-800/30 p-2">
+                              <NetworkCardGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} onFinish={() => setTestingCard(null)} />
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -3725,7 +3808,7 @@ export default function AdminPage() {
 
 // -- Mini-games playground ------------------------------------------------------
 
-type PlaygroundGame = 'runner' | 'memory' | 'quiz' | 'snake' | 'arch0' | 'arch1' | 'arch2' | 'minefield' | 'dice' | 'circuit0' | 'circuit1' | 'circuit2'
+type PlaygroundGame = 'runner' | 'memory' | 'quiz' | 'snake' | 'arch0' | 'arch1' | 'arch2' | 'minefield' | 'dice' | 'circuit0' | 'circuit1' | 'circuit2' | 'networkcard'
 
 const MOCK_RUNNER_EVENT = {
   key: 'admin-test', sceneKey: 'test',
@@ -3802,6 +3885,15 @@ const MOCK_CIRCUIT_EVENT_2 = {
   winText: '¡Cuartel general en línea!', loseText: 'El cuartel fue destruido.',
 }
 
+const MOCK_NETWORK_CARD_EVENT = {
+  key: 'admin-test', sceneKey: 'test',
+  title: 'Duelo de Red AWS - PRUEBA',
+  prompt: 'Elige tu carta. 0.0.0.0/0 vence a NACL · NACL vence a Security Group · Security Group vence a 0.0.0.0/0.',
+  rounds: 3,
+  winText: '¡Dominaste la seguridad de red!',
+  loseText: 'La red AWS te superó esta vez.',
+}
+
 const GAME_TABS: Array<{ id: PlaygroundGame; label: string; color: string; bg: string; border: string }> = [
   { id: 'runner', label: 'Runner AWS',       color: 'text-orange-300', bg: 'bg-orange-700/80', border: 'border-orange-500/40' },
   { id: 'memory', label: 'Memoria AWS',      color: 'text-cyan-300',   bg: 'bg-cyan-700/80',   border: 'border-cyan-500/40'   },
@@ -3812,9 +3904,10 @@ const GAME_TABS: Array<{ id: PlaygroundGame; label: string; color: string; bg: s
   { id: 'arch2',     label: 'Arquitectura N3',  color: 'text-sky-200',    bg: 'bg-sky-500/80',    border: 'border-sky-300/40'    },
   { id: 'minefield', label: 'Buscaminas',       color: 'text-rose-300',   bg: 'bg-rose-700/80',   border: 'border-rose-500/40'   },
   { id: 'dice',      label: 'Combate Dados',    color: 'text-amber-300',  bg: 'bg-amber-700/80',  border: 'border-amber-500/40'  },
-  { id: 'circuit0',  label: 'Circuito N1',      color: 'text-emerald-300',bg: 'bg-emerald-700/80', border: 'border-emerald-500/40' },
-  { id: 'circuit1',  label: 'Circuito N2',      color: 'text-emerald-300',bg: 'bg-emerald-600/80', border: 'border-emerald-400/40' },
-  { id: 'circuit2',  label: 'Circuito N3',      color: 'text-emerald-200',bg: 'bg-emerald-500/80', border: 'border-emerald-300/40' },
+  { id: 'circuit0',    label: 'Circuito N1',      color: 'text-emerald-300', bg: 'bg-emerald-700/80',  border: 'border-emerald-500/40'  },
+  { id: 'circuit1',    label: 'Circuito N2',      color: 'text-emerald-300', bg: 'bg-emerald-600/80',  border: 'border-emerald-400/40'  },
+  { id: 'circuit2',    label: 'Circuito N3',      color: 'text-emerald-200', bg: 'bg-emerald-500/80',  border: 'border-emerald-300/40'  },
+  { id: 'networkcard', label: 'Duelo de Red AWS', color: 'text-indigo-300',  bg: 'bg-indigo-700/80',   border: 'border-indigo-500/40'   },
 ]
 
 function MiniGamesPlayground() {
@@ -3954,6 +4047,16 @@ function MiniGamesPlayground() {
             <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
           </div>
           <CircuitPuzzleGame event={MOCK_CIRCUIT_EVENT_2} playerHealth={100} playerMaxHealth={100} onFinish={() => setActive(null)} onDamagePlayer={() => {}} />
+        </div>
+      )}
+
+      {active === 'networkcard' && (
+        <div className="rounded-xl border border-indigo-500/30 bg-[#080c1a] p-2">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-[11px] font-black uppercase tracking-widest text-indigo-400">🃏 Duelo de Red AWS - Modo Prueba</span>
+            <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
+          </div>
+          <NetworkCardGame event={MOCK_NETWORK_CARD_EVENT} onFinish={() => setActive(null)} />
         </div>
       )}
     </div>
