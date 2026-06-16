@@ -23,7 +23,13 @@ app.set('trust proxy', 1)
 
 const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN
 app.use((req, res, next) => {
-  if (CUSTOM_DOMAIN && req.get('host') !== CUSTOM_DOMAIN) {
+  if (
+    CUSTOM_DOMAIN &&
+    req.get('host') !== CUSTOM_DOMAIN &&
+    !req.path.startsWith('/api') &&
+    !req.path.startsWith('/uploads') &&
+    !req.path.startsWith('/socket.io')
+  ) {
     return res.redirect(301, `https://${CUSTOM_DOMAIN}${req.url}`)
   }
   next()
@@ -643,6 +649,9 @@ async function requireAdmin(req, res, next) {
     res.status(500).json({ error: err.message })
   }
 }
+
+/* HEALTH */
+app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
 /* AUTH */
 app.get('/api/auth/session', async (req, res) => {
