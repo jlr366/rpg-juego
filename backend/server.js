@@ -415,6 +415,22 @@ function normalizeStoryConfig(config) {
           }))
           .filter(ev => ev.sceneKey && ev.key)
       : [],
+    networkCardEvents: Array.isArray(config?.networkCardEvents)
+      ? config.networkCardEvents
+          .map((ev, index) => ({
+            key: typeof ev.key === 'string' && ev.key.trim() ? ev.key.trim() : `netcard${index + 1}`,
+            sceneKey: typeof ev.sceneKey === 'string' ? ev.sceneKey.trim() : '',
+            title: typeof ev.title === 'string' ? ev.title.trim() : '',
+            prompt: typeof ev.prompt === 'string' ? ev.prompt.trim() : '',
+            rounds: Number.isFinite(Number(ev.rounds)) ? Math.max(1, Math.min(5, Number(ev.rounds))) : 3,
+            rewardItemName: typeof ev.rewardItemName === 'string' ? ev.rewardItemName.trim() : '',
+            rewardItemType: typeof ev.rewardItemType === 'string' ? ev.rewardItemType.trim() : 'misc',
+            rewardItemPower: Number.isFinite(Number(ev.rewardItemPower)) ? Number(ev.rewardItemPower) : 0,
+            winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
+            loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
+          }))
+          .filter(ev => ev.sceneKey && ev.key)
+      : [],
     globalMusicUrl: typeof config?.globalMusicUrl === 'string' ? config.globalMusicUrl.trim() : '',
     victorySound: typeof config?.victorySound === 'string' ? config.victorySound.trim() : '',
     defeatSound: typeof config?.defeatSound === 'string' ? config.defeatSound.trim() : '',
