@@ -35,15 +35,8 @@ app.use((req, res, next) => {
   next()
 })
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://127.0.0.1:5173']
-
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
-    callback(new Error(`CORS: origen no permitido: ${origin}`))
-  },
+  origin: true,
   credentials: true,
 }))
 
@@ -1511,7 +1504,7 @@ const { Server: SocketServer } = require('socket.io')
 
 const httpServer = http.createServer(app)
 const io = new SocketServer(httpServer, {
-  cors: { origin: allowedOrigins, credentials: true },
+  cors: { origin: true, credentials: true },
 })
 
 // Track connected players
