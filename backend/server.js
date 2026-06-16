@@ -19,20 +19,43 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
+app.set('trust proxy', 1)
+
+const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN
+app.use((req, res, next) => {
+  if (CUSTOM_DOMAIN && req.get('host') !== CUSTOM_DOMAIN) {
+    return res.redirect(301, `https://${CUSTOM_DOMAIN}${req.url}`)
+  }
+  next()
+})
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://127.0.0.1:5173']
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    callback(new Error(`CORS: origen no permitido: ${origin}`))
+  },
   credentials: true,
 }))
 
 app.use(express.json({ limit: '100mb' }))
 app.use('/uploads', express.static(uploadRoot))
 
+const sessionSecret = process.env.SESSION_SECRET
+if (!sessionSecret) {
+  console.error('FATAL: SESSION_SECRET no está definido en las variables de entorno')
+  process.exit(1)
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'secret',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
   },
@@ -597,7 +620,8 @@ async function ensureDatabase() {
 
 async function requireAdmin(req, res, next) {
   try {
-    if (req.get('x-admin-password') === 'admin300') {
+    const adminPassword = process.env.ADMIN_PASSWORD
+    if (adminPassword && req.get('x-admin-password') === adminPassword) {
       return next()
     }
 
@@ -783,7 +807,8 @@ app.post('/api/admin/uploads/story', requireAdmin, storyUpload.single('file'), a
       : req.file.mimetype.startsWith('audio/')
         ? 'audio'
         : 'image'
-    const url = `${req.protocol}://${req.get('host')}/uploads/story/${req.file.filename}`
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol
+    const url = `${protocol}://${req.get('host')}/uploads/story/${req.file.filename}`
 
     res.json({
       url,
@@ -1483,7 +1508,7 @@ const { Server: SocketServer } = require('socket.io')
 
 const httpServer = http.createServer(app)
 const io = new SocketServer(httpServer, {
-  cors: { origin: true, credentials: true },
+  cors: { origin: allowedOrigins, credentials: true },
 })
 
 // Track connected players
@@ -1551,7 +1576,7 @@ app.post('/api/tts', async (req, res) => {
     const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
-        'xi-api-key': 'sk_0b97229093fc21a5dc3219e7a8f272ef711597789d1ab551',
+        'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1580,7 +1605,7 @@ app.post('/api/generate-item-image', async (req, res) => {
     const upstream = await fetch('https://api.pixellab.ai/v1/generate-image-pixflux', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer 6d157c2e-3666-45a9-bced-c407fb2dd4a4',
+        'Authorization': `Bearer ${process.env.PIXELLAB_API_KEY || ''}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1614,7 +1639,7 @@ app.post('/api/generate-3d-preview', async (req, res) => {
     const upstream = await fetch('https://api.meshy.ai/openapi/v2/text-to-3d', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer msy_aIHNqseLTcs8jFAPMnpYtxKu0iyWlHNZpPAX',
+        'Authorization': `Bearer ${process.env.MESHY_API_KEY || ''}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1642,7 +1667,7 @@ app.get('/api/3d-preview/:taskId', async (req, res) => {
   const { taskId } = req.params
   try {
     const upstream = await fetch(`https://api.meshy.ai/openapi/v2/text-to-3d/${taskId}`, {
-      headers: { 'Authorization': 'Bearer msy_aIHNqseLTcs8jFAPMnpYtxKu0iyWlHNZpPAX' },
+      headers: { 'Authorization': `Bearer ${process.env.MESHY_API_KEY || ''}` },
     })
     if (!upstream.ok) {
       const err = await upstream.text()
