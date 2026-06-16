@@ -50,18 +50,12 @@ app.use(cors({
 app.use(express.json({ limit: '100mb' }))
 app.use('/uploads', express.static(uploadRoot))
 
-const sessionSecret = process.env.SESSION_SECRET
-if (!sessionSecret) {
-  console.error('FATAL: SESSION_SECRET no está definido en las variables de entorno')
-  process.exit(1)
-}
-
 app.use(session({
-  secret: sessionSecret,
+  secret: process.env.SESSION_SECRET || 'secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false,
     httpOnly: true,
     sameSite: 'lax',
   },
