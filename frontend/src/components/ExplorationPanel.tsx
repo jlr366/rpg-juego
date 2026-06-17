@@ -1532,9 +1532,21 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     <div className={`relative rounded-lg border-2 border-[#6b371d] bg-[#2d160d]/95 p-5 shadow-[0_14px_40px_rgba(0,0,0,0.5),inset_0_0_0_2px_rgba(245,193,108,0.14)] md:p-6 ${isDeath ? 'ring-1 ring-rose-600/40' : ''}`}>
 
       {demoMode && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-purple-400/50 bg-purple-900/60 px-4 py-2 text-sm font-black text-purple-200 shadow">
-          <span className="text-lg">🎭</span>
-          MODO DEMO — Sin efectos reales · Vida infinita · Mini-juegos saltables
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-purple-400/50 bg-purple-900/60 px-4 py-2 text-sm font-black text-purple-200 shadow">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎭</span>
+            MODO DEMO — Sin efectos reales · Vida infinita · Mini-juegos saltables
+          </div>
+          {currentSceneKey && (
+            <div className="flex items-center gap-2 rounded border border-purple-300/30 bg-purple-800/60 px-3 py-1 text-xs font-mono">
+              <span className="text-purple-400">Nodo</span>
+              <span className="text-white">
+                #{(storyConfig?.scenes?.findIndex((s: StorySceneConfig) => s.key === currentSceneKey) ?? -1) + 1}
+              </span>
+              <span className="text-purple-400">·</span>
+              <span className="text-yellow-200">{currentSceneKey}</span>
+            </div>
+          )}
         </div>
       )}
 
