@@ -396,10 +396,29 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         const config = data.config || null
         setStoryConfig(config)
         const updateMarker = localStorage.getItem('rpg-story-config-updated-at') || ''
-        const shouldForceFirst = forceFirstScene || (updateMarker && updateMarker !== lastStoryUpdateRef.current)
         lastStoryUpdateRef.current = updateMarker
 
-        if (config?.scenes?.length && shouldForceFirst) {
+        if (!config?.scenes?.length) return
+
+        if (demoMode) {
+          // In demo mode: on config reload just refresh storyConfig in place so the admin
+          // sees updated content at their current node without going back to the first scene.
+          // Only set to first scene if there's no current scene yet.
+          if (!currentSceneKey || !config.scenes.some((s: StorySceneConfig) => s.key === currentSceneKey)) {
+            setCurrentSceneKey(config.scenes[0].key)
+          }
+          // Clear only the resolved-events state so events appear fresh after each admin save
+          setResolvedStoryEvents({})
+          setResolvedMemoryEvents({})
+          setResolvedConfiguredEnemies({})
+          setNodeStage('initial')
+          setEventResultText('')
+          setPendingStoryFeedback(null)
+          return
+        }
+
+        const shouldForceFirst = forceFirstScene || (updateMarker && updateMarker !== lastStoryUpdateRef.current)
+        if (shouldForceFirst) {
           setCurrentSceneKey(config.scenes[0].key)
           setCurrentIndex(0)
           setStep('camino')
@@ -418,14 +437,14 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
           setEventResultText('')
           setActiveMemoryEvent(null)
           activeConfiguredEnemyKeyRef.current = ''
-        } else if (config?.scenes?.length && (!currentSceneKey || !config.scenes.some((scene: StorySceneConfig) => scene.key === currentSceneKey))) {
+        } else if (!currentSceneKey || !config.scenes.some((scene: StorySceneConfig) => scene.key === currentSceneKey)) {
           setCurrentSceneKey(config.scenes[0].key)
         }
       }
     } catch (error) {
       console.error('Error loading story config:', error)
     }
-  }, [currentSceneKey])
+  }, [currentSceneKey, demoMode])
 
   useEffect(() => {
     loadStoryConfig()
@@ -1403,15 +1422,22 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   }
 
   useEffect(() => {
-    if (!storyConfig?.scenes?.length || !user || didRestoreRef.current) return
+    if (!storyConfig?.scenes?.length || didRestoreRef.current) return
     didRestoreRef.current = true
+    // Demo mode always starts fresh at the first scene — never restores saved progress
+    if (demoMode) {
+      setCurrentSceneKey(storyConfig.scenes[0].key)
+      return
+    }
+    if (!user) return
     const restored = restoreAdventureState(sessionStorage.getItem(sessionSaveKey) || localStorage.getItem(checkpointSaveKey))
     if (!restored && !currentSceneKey) setCurrentSceneKey(storyConfig.scenes[0].key)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkpointSaveKey, sessionSaveKey, storyConfig?.scenes?.length, user])
 
   useEffect(() => {
-    if (!sessionSaveKey || !currentSceneKey) return
+    // Demo mode never saves progress to sessionStorage
+    if (demoMode || !sessionSaveKey || !currentSceneKey) return
     sessionStorage.setItem(sessionSaveKey, JSON.stringify(buildAdventureState()))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, currentSceneKey, nodeStage, nodesVisited, collectedNodeItems, fledConfiguredEnemies, resolvedConfiguredEnemies, resolvedStoryEvents, resolvedMemoryEvents, eventResultText, activeMemoryEvent, sessionSaveKey])
