@@ -15,6 +15,16 @@ const storyUploadDir = path.join(uploadRoot, 'story')
 
 fs.mkdirSync(storyUploadDir, { recursive: true })
 
+let cloudinary = null
+if (process.env.CLOUDINARY_URL) {
+  try {
+    cloudinary = require('cloudinary').v2
+    cloudinary.config({ cloudinary_url: process.env.CLOUDINARY_URL })
+  } catch (_) {
+    cloudinary = null
+  }
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
@@ -803,16 +813,21 @@ app.post('/api/admin/uploads/story', requireAdmin, storyUpload.single('file'), a
       : req.file.mimetype.startsWith('audio/')
         ? 'audio'
         : 'image'
+
+    if (cloudinary) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: 'auto',
+        folder: 'rpg-story',
+        use_filename: true,
+        unique_filename: true,
+      })
+      fs.unlink(req.file.path, () => {})
+      return res.json({ url: result.secure_url, type, filename: result.public_id, originalName: req.file.originalname, size: req.file.size })
+    }
+
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol
     const url = `${protocol}://${req.get('host')}/uploads/story/${req.file.filename}`
-
-    res.json({
-      url,
-      type,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-    })
+    res.json({ url, type, filename: req.file.filename, originalName: req.file.originalname, size: req.file.size })
   } catch (err) {
     console.error('ADMIN UPLOAD ERROR:', err)
     res.status(500).json({ error: err.message })
