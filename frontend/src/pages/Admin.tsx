@@ -1956,10 +1956,30 @@ export default function AdminPage() {
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
         }
+        // Detect if backend dropped any items (key mismatch / orphaned sceneKey)
+        const sent = prepared.config
+        const lostScenes   = (sent.scenes?.length || 0) - (savedConfig.scenes.length)
+        const lostEvents   = ((sent.storyEvents?.length || 0) + (sent.runnerEvents?.length || 0) + (sent.quizEvents?.length || 0) + (sent.snakeEvents?.length || 0) + (sent.minefieldEvents?.length || 0) + (sent.diceCombatEvents?.length || 0) + (sent.circuitPuzzleEvents?.length || 0) + (sent.networkCardEvents?.length || 0) + (sent.memoryEvents?.length || 0))
+          - ((savedConfig.storyEvents.length) + (savedConfig.runnerEvents.length) + (savedConfig.quizEvents.length) + (savedConfig.snakeEvents.length) + (savedConfig.minefieldEvents.length) + (savedConfig.diceCombatEvents.length) + (savedConfig.circuitPuzzleEvents.length) + (savedConfig.networkCardEvents.length) + (savedConfig.memoryEvents.length))
+        const lostEnemies  = (sent.enemies?.length || 0) - savedConfig.enemies.length
+        const lostItems    = (sent.nodeItems?.length || 0) - savedConfig.nodeItems.length
+        const totalLost = lostScenes + lostEvents + lostEnemies + lostItems
+
         lastSavedConfigRef.current = JSON.stringify(savedConfig)
         setConfig(savedConfig)
         publishStoryUpdate(savedConfig)
-        setMessage('Guardado automatico. El juego ya recibio estos cambios.')
+
+        if (totalLost > 0) {
+          const parts = [
+            lostScenes  > 0 ? `${lostScenes} nodo(s)` : '',
+            lostEvents  > 0 ? `${lostEvents} evento(s)` : '',
+            lostEnemies > 0 ? `${lostEnemies} enemigo(s)` : '',
+            lostItems   > 0 ? `${lostItems} item(s)` : '',
+          ].filter(Boolean).join(', ')
+          setMessage(`⚠️ Guardado OK pero se perdieron ${parts}. Causa probable: la clave del nodo no coincide. Revisa que todos los eventos/enemigos/items apunten a un nodo existente.`)
+        } else {
+          setMessage('Guardado automatico. El juego ya recibio estos cambios.')
+        }
       } catch (error) {
         console.error('Error en guardado automatico:', error)
         setMessage(`⚠️ Error en guardado automatico: ${error instanceof Error ? error.message : 'error de red'}`)
@@ -1980,6 +2000,8 @@ export default function AdminPage() {
 
   const renameSceneKey = (index: number, nextKey: string) => {
     const oldKey = config.scenes[index]?.key || ''
+    const rk = <T extends { sceneKey: string }>(arr: T[]): T[] =>
+      arr.map(item => item.sceneKey === oldKey ? { ...item, sceneKey: nextKey } : item)
     setConfig(prev => ({
       ...prev,
       scenes: prev.scenes.map((scene, i) => i === index ? { ...scene, key: nextKey } : scene),
@@ -1988,11 +2010,19 @@ export default function AdminPage() {
         sceneKey: decision.sceneKey === oldKey ? nextKey : decision.sceneKey,
         nextSceneKey: decision.nextSceneKey === oldKey ? nextKey : decision.nextSceneKey,
       })),
-      enemies: prev.enemies.map(enemy => enemy.sceneKey === oldKey ? { ...enemy, sceneKey: nextKey } : enemy),
-      nodeItems: prev.nodeItems.map(item => item.sceneKey === oldKey ? { ...item, sceneKey: nextKey } : item),
-      storyEvents: prev.storyEvents.map(event => event.sceneKey === oldKey ? { ...event, sceneKey: nextKey } : event),
-      memoryEvents: prev.memoryEvents.map(event => event.sceneKey === oldKey ? { ...event, sceneKey: nextKey } : event),
-      endings: prev.endings.map(ending => ending.sceneKey === oldKey ? { ...ending, sceneKey: nextKey } : ending),
+      enemies:             rk(prev.enemies),
+      nodeItems:           rk(prev.nodeItems),
+      storyEvents:         rk(prev.storyEvents),
+      memoryEvents:        rk(prev.memoryEvents),
+      endings:             rk(prev.endings),
+      runnerEvents:        rk(prev.runnerEvents as { sceneKey: string }[]) as typeof prev.runnerEvents,
+      quizEvents:          rk(prev.quizEvents as { sceneKey: string }[]) as typeof prev.quizEvents,
+      snakeEvents:         rk(prev.snakeEvents as { sceneKey: string }[]) as typeof prev.snakeEvents,
+      archEvents:          rk(prev.archEvents as { sceneKey: string }[]) as typeof prev.archEvents,
+      minefieldEvents:     rk(prev.minefieldEvents as { sceneKey: string }[]) as typeof prev.minefieldEvents,
+      diceCombatEvents:    rk(prev.diceCombatEvents as { sceneKey: string }[]) as typeof prev.diceCombatEvents,
+      circuitPuzzleEvents: rk(prev.circuitPuzzleEvents as { sceneKey: string }[]) as typeof prev.circuitPuzzleEvents,
+      networkCardEvents:   rk(prev.networkCardEvents as { sceneKey: string }[]) as typeof prev.networkCardEvents,
     }))
     setSelectedSceneKey(nextKey)
   }
