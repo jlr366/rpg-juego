@@ -341,7 +341,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     quizEvents: Array.isArray(config?.quizEvents)
       ? config.quizEvents
@@ -356,7 +356,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     snakeEvents: Array.isArray(config?.snakeEvents)
       ? config.snakeEvents
@@ -372,7 +372,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     archEvents: Array.isArray(config?.archEvents)
       ? config.archEvents
@@ -387,7 +387,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     minefieldEvents: Array.isArray(config?.minefieldEvents)
       ? config.minefieldEvents
@@ -406,7 +406,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     diceCombatEvents: Array.isArray(config?.diceCombatEvents)
       ? config.diceCombatEvents
@@ -415,7 +415,7 @@ function normalizeStoryConfig(config) {
             sceneKey: typeof ev.sceneKey === 'string' ? ev.sceneKey.trim() : '',
             title: typeof ev.title === 'string' ? ev.title.trim() : '',
             prompt: typeof ev.prompt === 'string' ? ev.prompt.trim() : '',
-            enemyName: typeof ev.enemyName === 'string' ? ev.enemyName.trim() : 'Enemigo',
+            enemyName: typeof ev.enemyName === 'string' && ev.enemyName.trim() ? ev.enemyName.trim() : '',
             enemyHP: Number.isFinite(Number(ev.enemyHP)) ? Number(ev.enemyHP) : 80,
             enemyAttack: Number.isFinite(Number(ev.enemyAttack)) ? Number(ev.enemyAttack) : 18,
             weakWeapon: typeof ev.weakWeapon === 'string' ? ev.weakWeapon.trim() : '',
@@ -425,7 +425,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey) && ev.title)
       : [],
     circuitPuzzleEvents: Array.isArray(config?.circuitPuzzleEvents)
       ? config.circuitPuzzleEvents
@@ -441,7 +441,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     networkCardEvents: Array.isArray(config?.networkCardEvents)
       ? config.networkCardEvents
@@ -457,7 +457,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     globalMusicUrl: typeof config?.globalMusicUrl === 'string' ? config.globalMusicUrl.trim() : '',
     victorySound: typeof config?.victorySound === 'string' ? config.victorySound.trim() : '',
