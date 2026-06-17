@@ -748,13 +748,10 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const applyStoryEventChoice = (event: StoryChoiceEventConfig, option: 'A' | 'B') => {
     setResolvedStoryEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
 
-    if (event.explanation || event.correctOption) {
-      const wasCorrect = event.correctOption ? event.correctOption === option : null
-      setPendingStoryFeedback({ wasCorrect, explanation: event.explanation || '', event, option })
-      return
-    }
-
-    applyStoryEventEffect(event, option)
+    const resultText = option === 'A' ? event.optionAText : event.optionBText
+    const wasCorrect = event.correctOption ? event.correctOption === option : null
+    // Always show feedback panel so the player sees the result before the effect is applied
+    setPendingStoryFeedback({ wasCorrect, explanation: event.explanation || resultText || '', event, option })
   }
 
   const dismissStoryFeedback = () => {
@@ -1886,38 +1883,46 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         </div>
       )}
 
-      {/* Feedback panel — shown after choosing an option that has explanation or correct answer */}
-      {pendingStoryFeedback && (
-        <div className={`mt-4 rounded border-2 p-5 shadow-inner ${
-          pendingStoryFeedback.wasCorrect === true  ? 'border-emerald-400/60 bg-emerald-950/80' :
-          pendingStoryFeedback.wasCorrect === false ? 'border-rose-400/60    bg-rose-950/80'    :
-                                                      'border-fuchsia-400/40 bg-[#211020]/85'
-        }`}>
-          {pendingStoryFeedback.wasCorrect !== null && (
-            <div className={`mb-3 flex items-center gap-2 text-lg font-black ${
-              pendingStoryFeedback.wasCorrect ? 'text-emerald-300' : 'text-rose-300'
-            }`}>
-              {pendingStoryFeedback.wasCorrect ? '✅ ¡Respuesta correcta!' : '❌ Respuesta incorrecta'}
-              <span className="text-sm font-normal text-slate-400">
-                — Elegiste la opcion {pendingStoryFeedback.option}
-                {pendingStoryFeedback.event.correctOption && !pendingStoryFeedback.wasCorrect &&
-                  ` (la correcta era la opcion ${pendingStoryFeedback.event.correctOption})`}
-              </span>
-            </div>
-          )}
-          {pendingStoryFeedback.explanation && (
-            <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-slate-200">
-              {pendingStoryFeedback.explanation}
-            </p>
-          )}
-          <button
-            onClick={dismissStoryFeedback}
-            className="rounded border border-fuchsia-400/40 bg-fuchsia-700/60 px-5 py-2 text-sm font-bold text-white shadow hover:bg-fuchsia-600/70 active:scale-95"
-          >
-            Continuar →
-          </button>
-        </div>
-      )}
+      {/* Feedback panel — shown after choosing any story event option */}
+      {pendingStoryFeedback && (() => {
+        const { wasCorrect, explanation, event: fe, option: fo } = pendingStoryFeedback
+        const chosenLabel = fo === 'A' ? fe.optionALabel : fe.optionBLabel
+        const chosenEffect = fo === 'A' ? fe.optionAEffect : fe.optionBEffect
+        const isReward = chosenEffect === 'reward_item'
+        const isDamage = chosenEffect === 'damage_half' || chosenEffect === 'damage_quarter' || chosenEffect === 'damage_fixed'
+        return (
+          <div className={`mt-4 rounded border-2 p-5 shadow-inner ${
+            wasCorrect === true  ? 'border-emerald-400/60 bg-emerald-950/80' :
+            wasCorrect === false ? 'border-rose-400/60    bg-rose-950/80'    :
+            isReward             ? 'border-emerald-400/40 bg-emerald-950/60' :
+            isDamage             ? 'border-rose-400/40    bg-rose-950/60'    :
+                                   'border-fuchsia-400/40 bg-[#211020]/85'
+          }`}>
+            {wasCorrect !== null ? (
+              <div className={`mb-3 flex flex-wrap items-center gap-2 text-lg font-black ${wasCorrect ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {wasCorrect ? '✅ ¡Respuesta correcta!' : '❌ Respuesta incorrecta'}
+                <span className="text-sm font-normal text-slate-400">
+                  — Elegiste la opcion {fo}
+                  {fe.correctOption && !wasCorrect && ` (la correcta era la opcion ${fe.correctOption})`}
+                </span>
+              </div>
+            ) : (
+              <div className={`mb-3 flex flex-wrap items-center gap-2 text-base font-bold ${isReward ? 'text-emerald-300' : isDamage ? 'text-rose-300' : 'text-fuchsia-200'}`}>
+                {isReward ? '🎁' : isDamage ? '💔' : '📋'} Elegiste: <span className="font-normal text-white">{chosenLabel}</span>
+              </div>
+            )}
+            {explanation && (
+              <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-slate-200">{explanation}</p>
+            )}
+            <button
+              onClick={dismissStoryFeedback}
+              className="rounded border border-fuchsia-400/40 bg-fuchsia-700/60 px-5 py-2 text-sm font-bold text-white shadow hover:bg-fuchsia-600/70 active:scale-95"
+            >
+              Continuar →
+            </button>
+          </div>
+        )
+      })()}
 
       {!isDeath && !inCombat && !activeMemoryEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
         <div className="mt-4 rounded border-2 border-amber-400/40 bg-[#211408]/85 p-4 shadow-inner">
