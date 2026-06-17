@@ -43,7 +43,7 @@ function resolveRound(player: NetElement, ai: NetElement): 'win' | 'loss' | 'dra
 function FlipCard({ element, flipped, label }: { element: NetElement; flipped: boolean; label: string }) {
   const cfg = ELEMENTS[element]
   return (
-    <div style={{ perspective: 700, width: 90, height: 110 }}>
+    <div style={{ perspective: 900, width: 140, height: 170 }}>
       <div style={{
         position: 'relative', width: '100%', height: '100%',
         transformStyle: 'preserve-3d',
@@ -53,25 +53,25 @@ function FlipCard({ element, flipped, label }: { element: NetElement; flipped: b
         {/* Back */}
         <div style={{
           position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-          borderRadius: 12, border: '2px solid #334155',
+          borderRadius: 16, border: '2px solid #334155',
           background: 'linear-gradient(135deg, #0f172a 60%, #1e293b)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-          boxShadow: '0 0 18px rgba(99,102,241,0.25)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+          boxShadow: '0 0 24px rgba(99,102,241,0.25)',
         }}>
-          <span style={{ fontSize: 32, filter: 'grayscale(0.3) brightness(0.7)' }}>🃏</span>
-          <span style={{ fontSize: 9, color: '#64748b', fontWeight: 900, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</span>
+          <span style={{ fontSize: 52, filter: 'grayscale(0.3) brightness(0.7)' }}>🃏</span>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 900, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</span>
         </div>
         {/* Front */}
         <div style={{
           position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
           transform: 'rotateY(180deg)',
-          borderRadius: 12, border: `2px solid ${cfg.border}`,
+          borderRadius: 16, border: `2px solid ${cfg.border}`,
           background: cfg.color,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-          boxShadow: `0 0 22px ${cfg.glow}55`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+          boxShadow: `0 0 28px ${cfg.glow}55`,
         }}>
-          <span style={{ fontSize: 32 }}>{cfg.icon}</span>
-          <span style={{ fontSize: 8, color: cfg.glow, fontWeight: 900, textAlign: 'center', padding: '0 6px', lineHeight: 1.3 }}>
+          <span style={{ fontSize: 52 }}>{cfg.icon}</span>
+          <span style={{ fontSize: 13, color: cfg.glow, fontWeight: 900, textAlign: 'center', padding: '0 8px', lineHeight: 1.3 }}>
             {cfg.label}
           </span>
         </div>
@@ -175,31 +175,31 @@ export const NetworkCardGame: React.FC<Props> = ({ event, onFinish }) => {
   const finalLost = aiWins > playerWins
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-indigo-400/30 bg-[#080c1a]/95 p-4 font-mono text-white shadow-[0_0_40px_rgba(99,102,241,0.12)]">
+    <div className="flex flex-col gap-5 rounded-xl border border-indigo-400/30 bg-[#080c1a]/95 p-6 font-mono text-white shadow-[0_0_40px_rgba(99,102,241,0.12)]">
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-black uppercase tracking-widest text-indigo-300">
+        <span className="text-lg font-black uppercase tracking-widest text-indigo-300">
           🃏 {event.title || 'Duelo de Red AWS'}
         </span>
-        <span className="text-[11px] text-slate-400">
+        <span className="text-sm text-slate-400">
           Ronda {round}/{totalRounds} &nbsp;·&nbsp; 🏆 {playerWins} — {aiWins} 🤖
         </span>
       </div>
 
       {event.prompt && (
-        <p className="text-center text-[11px] text-slate-400">{event.prompt}</p>
+        <p className="text-center text-sm text-slate-400">{event.prompt}</p>
       )}
 
       {/* Reference table */}
-      <div className="grid grid-cols-3 gap-1.5 text-[9px]">
+      <div className="grid grid-cols-3 gap-2 text-xs">
         {ALL.map(el => {
           const cfg  = ELEMENTS[el]
           const loses = ALL.find(x => BEATS[x] === el)!
           return (
-            <div key={el} className="rounded border px-2 py-1.5 text-center" style={{ borderColor: cfg.border + '55', background: cfg.color + 'cc' }}>
-              <div className="font-black" style={{ color: cfg.glow }}>{cfg.icon} {cfg.label}</div>
-              <div className="mt-0.5 text-slate-400">
+            <div key={el} className="rounded-lg border px-3 py-2 text-center" style={{ borderColor: cfg.border + '55', background: cfg.color + 'cc' }}>
+              <div className="text-sm font-black" style={{ color: cfg.glow }}>{cfg.icon} {cfg.label}</div>
+              <div className="mt-1 text-slate-400">
                 vence a {ELEMENTS[BEATS[el]].icon} {ELEMENTS[BEATS[el]].label}
               </div>
               <div className="text-slate-600">
@@ -212,21 +212,21 @@ export const NetworkCardGame: React.FC<Props> = ({ event, onFinish }) => {
 
       {/* Select phase */}
       {phase === 'select' && (
-        <div className="flex flex-col gap-2">
-          <p className="text-center text-[11px] font-bold text-indigo-300">Elige tu carta:</p>
-          <div className="grid grid-cols-3 gap-3">
+        <div className="flex flex-col gap-3">
+          <p className="text-center text-sm font-bold text-indigo-300">Elige tu carta:</p>
+          <div className="grid grid-cols-3 gap-4">
             {ALL.map(el => {
               const cfg = ELEMENTS[el]
               return (
                 <button
                   key={el}
                   onClick={() => pick(el)}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all duration-150 hover:scale-105 hover:brightness-110 active:scale-95"
-                  style={{ borderColor: cfg.border, background: cfg.color, boxShadow: `0 0 18px ${cfg.glow}30` }}
+                  className="flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all duration-150 hover:scale-105 hover:brightness-110 active:scale-95"
+                  style={{ borderColor: cfg.border, background: cfg.color, boxShadow: `0 0 22px ${cfg.glow}30` }}
                 >
-                  <span className="text-4xl">{cfg.icon}</span>
-                  <span className="text-[10px] font-black leading-tight" style={{ color: cfg.glow }}>{cfg.label}</span>
-                  <span className="text-[8px] text-slate-500">{cfg.desc}</span>
+                  <span className="text-5xl">{cfg.icon}</span>
+                  <span className="text-sm font-black leading-tight" style={{ color: cfg.glow }}>{cfg.label}</span>
+                  <span className="text-xs text-slate-500">{cfg.desc}</span>
                 </button>
               )
             })}
@@ -236,28 +236,28 @@ export const NetworkCardGame: React.FC<Props> = ({ event, onFinish }) => {
 
       {/* Countdown + Reveal */}
       {(phase === 'countdown' || phase === 'reveal' || phase === 'done') && playerPick && aiPick && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-center gap-8">
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">TÚ</span>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-center gap-10">
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-sm font-black uppercase tracking-widest text-blue-400">TÚ</span>
               <FlipCard element={playerPick} flipped={flipped} label="tu carta" />
             </div>
 
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-2">
               {phase === 'countdown' && (
                 <span
                   key={countdown}
-                  className="text-5xl font-black text-yellow-300"
-                  style={{ textShadow: '0 0 20px rgba(253,224,71,0.9)', animation: 'none' }}
+                  className="text-6xl font-black text-yellow-300"
+                  style={{ textShadow: '0 0 24px rgba(253,224,71,0.9)', animation: 'none' }}
                 >
                   {countdown === 0 ? '¡YA!' : countdown}
                 </span>
               )}
               {(phase === 'reveal' || phase === 'done') && !roundResult && (
-                <span className="text-2xl font-black text-slate-500">VS</span>
+                <span className="text-3xl font-black text-slate-500">VS</span>
               )}
               {roundResult && (
-                <span className={`text-2xl font-black ${
+                <span className={`text-3xl font-black ${
                   roundResult === 'win'  ? 'text-emerald-400' :
                   roundResult === 'loss' ? 'text-rose-400' :
                   'text-yellow-400'
@@ -267,14 +267,14 @@ export const NetworkCardGame: React.FC<Props> = ({ event, onFinish }) => {
               )}
             </div>
 
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">RIVAL</span>
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-sm font-black uppercase tracking-widest text-rose-400">RIVAL</span>
               <FlipCard element={aiPick} flipped={flipped} label="rival" />
             </div>
           </div>
 
           {/* Round message */}
-          <div className={`rounded border px-3 py-2 text-center text-xs font-bold transition-all ${
+          <div className={`rounded-lg border px-4 py-3 text-center text-sm font-bold transition-all ${
             roundResult === 'win'  ? 'border-emerald-500/50 bg-emerald-950/60 text-emerald-300' :
             roundResult === 'loss' ? 'border-rose-500/50    bg-rose-950/60    text-rose-300'    :
             roundResult === 'draw' ? 'border-yellow-500/50  bg-yellow-950/60  text-yellow-300'  :
@@ -289,26 +289,26 @@ export const NetworkCardGame: React.FC<Props> = ({ event, onFinish }) => {
 
       {/* Final result */}
       {phase === 'done' && (
-        <div className={`rounded-lg border p-3 text-center ${
+        <div className={`rounded-xl border p-5 text-center ${
           finalWon  ? 'border-emerald-400/50 bg-emerald-950/80' :
           finalLost ? 'border-rose-400/50    bg-rose-950/80'    :
                       'border-yellow-400/50  bg-yellow-950/80'
         }`}>
-          <div className={`text-base font-black ${
+          <div className={`text-xl font-black ${
             finalWon  ? 'text-emerald-300' :
             finalLost ? 'text-rose-300'    :
                         'text-yellow-300'
           }`}>
             {finalWon ? '🏆 ¡Victoria!' : finalLost ? '💀 Derrota' : '🤝 Empate'}
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-2 text-sm text-slate-400">
             {finalWon
               ? event.winText  || '¡Dominaste la seguridad de red!'
               : finalLost
               ? event.loseText || 'La red AWS te superó esta vez.'
               : 'Partida igualada — nadie domina la red.'}
           </p>
-          <p className="mt-1 text-[10px] text-slate-600">
+          <p className="mt-1 text-xs text-slate-600">
             {playerWins} victorias tuyas — {aiWins} del rival
           </p>
         </div>
