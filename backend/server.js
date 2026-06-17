@@ -275,6 +275,8 @@ function normalizeStoryConfig(config) {
         optionBItemType: typeof event.optionBItemType === 'string' ? event.optionBItemType.trim() : 'misc',
         optionBItemPower: Number.isFinite(Number(event.optionBItemPower)) ? Number(event.optionBItemPower) : 0,
         optionBText: typeof event.optionBText === 'string' ? event.optionBText.trim() : '',
+        correctOption: ['A', 'B'].includes(event.correctOption) ? event.correctOption : '',
+        explanation: typeof event.explanation === 'string' ? event.explanation.trim() : '',
         memoryEnemyName: typeof event.memoryEnemyName === 'string' ? event.memoryEnemyName.trim() : '',
         memoryTurnSeconds: Number.isFinite(Number(event.memoryTurnSeconds)) ? Math.max(5, Math.min(60, Number(event.memoryTurnSeconds))) : 12,
         memoryStakeItemName: typeof event.memoryStakeItemName === 'string' ? event.memoryStakeItemName.trim() : '',

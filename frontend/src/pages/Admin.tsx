@@ -80,6 +80,8 @@ interface StoryChoiceEventConfig {
   optionBItemType: string
   optionBItemPower: number
   optionBText: string
+  correctOption: 'A' | 'B' | ''
+  explanation: string
 }
 
 interface MemoryEventConfig {
@@ -341,6 +343,8 @@ const blankStoryEvent: StoryChoiceEventConfig = {
   optionBItemType: 'misc',
   optionBItemPower: 0,
   optionBText: '',
+  correctOption: '',
+  explanation: '',
 }
 
 const blankMemoryEvent: MemoryEventConfig = {
@@ -3800,6 +3804,29 @@ export default function AdminPage() {
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <EventOptionEditor title="Opcion A" event={event} prefix="A" onChange={patch => updateStoryEvent(index, patch)} />
                 <EventOptionEditor title="Opcion B" event={event} prefix="B" onChange={patch => updateStoryEvent(index, patch)} />
+              </div>
+              <div className="mt-3 rounded border border-fuchsia-400/25 bg-fuchsia-950/30 p-3">
+                <div className="mb-2 text-xs font-bold uppercase tracking-wide text-fuchsia-300">📚 Retroalimentacion al alumno</div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <LabeledSelect
+                    label="Opcion correcta"
+                    value={event.correctOption || ''}
+                    onChange={value => updateStoryEvent(index, { correctOption: value as 'A' | 'B' | '' })}
+                    options={[
+                      { value: '', label: 'Sin respuesta correcta' },
+                      { value: 'A', label: 'Opcion A es correcta' },
+                      { value: 'B', label: 'Opcion B es correcta' },
+                    ]}
+                  />
+                  <div className="md:col-span-2">
+                    <LabeledInput
+                      label="Texto explicativo (aparece despues de elegir)"
+                      value={event.explanation || ''}
+                      onChange={value => updateStoryEvent(index, { explanation: value })}
+                      placeholder="La respuesta correcta es A porque los Security Groups son stateful..."
+                    />
+                  </div>
+                </div>
               </div>
               <button onClick={() => setConfig(prev => ({ ...prev, storyEvents: prev.storyEvents.filter((_, i) => i !== index) }))} className="mt-3 inline-flex items-center gap-2 rounded bg-red-600 px-3 py-1.5 text-sm hover:bg-red-700">
                 <Trash2 className="h-4 w-4" /> Eliminar evento

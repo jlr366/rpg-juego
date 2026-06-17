@@ -97,6 +97,8 @@ interface StoryChoiceEventConfig {
   optionBItemType?: string
   optionBItemPower?: number
   optionBText?: string
+  correctOption?: string
+  explanation?: string
 }
 
 interface MemoryEventConfig {
@@ -349,6 +351,12 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const [resolvedStoryEvents, setResolvedStoryEvents] = useState<Record<string, boolean>>({})
   const [resolvedMemoryEvents, setResolvedMemoryEvents] = useState<Record<string, boolean>>({})
   const [eventResultText, setEventResultText] = useState('')
+  const [pendingStoryFeedback, setPendingStoryFeedback] = useState<{
+    wasCorrect: boolean | null
+    explanation: string
+    event: StoryChoiceEventConfig
+    option: 'A' | 'B'
+  } | null>(null)
   const [activeMemoryEvent, setActiveMemoryEvent]     = useState<MemoryEventConfig | null>(null)
   const [activeRunnerEvent, setActiveRunnerEvent]     = useState<RunnerEventConfig | null>(null)
   const [activeTechQuizEvent, setActiveTechQuizEvent] = useState<TechQuizEventConfig | null>(null)
@@ -699,14 +707,13 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     }
   }
 
-  const applyStoryEventChoice = (event: StoryChoiceEventConfig, option: 'A' | 'B') => {
+  const applyStoryEventEffect = (event: StoryChoiceEventConfig, option: 'A' | 'B') => {
     const effect = option === 'A' ? event.optionAEffect : event.optionBEffect
     const text = option === 'A' ? event.optionAText : event.optionBText
     const itemName = option === 'A' ? event.optionAItemName : event.optionBItemName
     const itemType = option === 'A' ? event.optionAItemType : event.optionBItemType
     const itemPower = option === 'A' ? event.optionAItemPower : event.optionBItemPower
 
-    setResolvedStoryEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
     setEventResultText(text || '')
 
     if (effect === 'reward_item' && itemName) {
@@ -736,6 +743,25 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       const item = inventory.find(entry => entry.type !== 'potion' && entry.type !== 'consumable') || inventory[0]
       if (item) dropItem(item.id)
     }
+  }
+
+  const applyStoryEventChoice = (event: StoryChoiceEventConfig, option: 'A' | 'B') => {
+    setResolvedStoryEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
+
+    if (event.explanation || event.correctOption) {
+      const wasCorrect = event.correctOption ? event.correctOption === option : null
+      setPendingStoryFeedback({ wasCorrect, explanation: event.explanation || '', event, option })
+      return
+    }
+
+    applyStoryEventEffect(event, option)
+  }
+
+  const dismissStoryFeedback = () => {
+    if (!pendingStoryFeedback) return
+    const { event, option } = pendingStoryFeedback
+    setPendingStoryFeedback(null)
+    applyStoryEventEffect(event, option)
   }
 
   const finishMemoryDuel = (event: MemoryEventConfig, result: MemoryDuelResult, wageredItemId?: string) => {
@@ -1827,7 +1853,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         </div>
       )}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !currentMemoryEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && currentStoryEvent && !configuredEnding && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !currentMemoryEvent && !pendingGameReward && !gameResultPending && !pendingStoryFeedback && nodeStage === 'initial' && currentStoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border-2 border-fuchsia-400/40 bg-[#211020]/85 p-4 shadow-inner">
           <div className="mb-2 font-semibold text-fuchsia-100">{currentStoryEvent.title}</div>
           {currentStoryEvent.prompt && <p className="mb-3 whitespace-pre-wrap text-sm leading-6 text-white">{currentStoryEvent.prompt}</p>}
@@ -1845,6 +1871,39 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
               {currentStoryEvent.optionBLabel}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Feedback panel — shown after choosing an option that has explanation or correct answer */}
+      {pendingStoryFeedback && (
+        <div className={`mt-4 rounded border-2 p-5 shadow-inner ${
+          pendingStoryFeedback.wasCorrect === true  ? 'border-emerald-400/60 bg-emerald-950/80' :
+          pendingStoryFeedback.wasCorrect === false ? 'border-rose-400/60    bg-rose-950/80'    :
+                                                      'border-fuchsia-400/40 bg-[#211020]/85'
+        }`}>
+          {pendingStoryFeedback.wasCorrect !== null && (
+            <div className={`mb-3 flex items-center gap-2 text-lg font-black ${
+              pendingStoryFeedback.wasCorrect ? 'text-emerald-300' : 'text-rose-300'
+            }`}>
+              {pendingStoryFeedback.wasCorrect ? '✅ ¡Respuesta correcta!' : '❌ Respuesta incorrecta'}
+              <span className="text-sm font-normal text-slate-400">
+                — Elegiste la opcion {pendingStoryFeedback.option}
+                {pendingStoryFeedback.event.correctOption && !pendingStoryFeedback.wasCorrect &&
+                  ` (la correcta era la opcion ${pendingStoryFeedback.event.correctOption})`}
+              </span>
+            </div>
+          )}
+          {pendingStoryFeedback.explanation && (
+            <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-slate-200">
+              {pendingStoryFeedback.explanation}
+            </p>
+          )}
+          <button
+            onClick={dismissStoryFeedback}
+            className="rounded border border-fuchsia-400/40 bg-fuchsia-700/60 px-5 py-2 text-sm font-bold text-white shadow hover:bg-fuchsia-600/70 active:scale-95"
+          >
+            Continuar →
+          </button>
         </div>
       )}
 
