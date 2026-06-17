@@ -748,10 +748,8 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const applyStoryEventChoice = (event: StoryChoiceEventConfig, option: 'A' | 'B') => {
     setResolvedStoryEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
 
-    const resultText = option === 'A' ? event.optionAText : event.optionBText
     const wasCorrect = event.correctOption ? event.correctOption === option : null
-    // Always show feedback panel so the player sees the result before the effect is applied
-    setPendingStoryFeedback({ wasCorrect, explanation: event.explanation || resultText || '', event, option })
+    setPendingStoryFeedback({ wasCorrect, explanation: event.explanation || '', event, option })
   }
 
   const dismissStoryFeedback = () => {
@@ -1886,7 +1884,8 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       {/* Feedback panel — shown after choosing any story event option */}
       {pendingStoryFeedback && (() => {
         const { wasCorrect, explanation, event: fe, option: fo } = pendingStoryFeedback
-        const chosenLabel = fo === 'A' ? fe.optionALabel : fe.optionBLabel
+        const chosenLabel  = fo === 'A' ? fe.optionALabel : fe.optionBLabel
+        const chosenText   = fo === 'A' ? fe.optionAText  : fe.optionBText
         const chosenEffect = fo === 'A' ? fe.optionAEffect : fe.optionBEffect
         const isReward = chosenEffect === 'reward_item'
         const isDamage = chosenEffect === 'damage_half' || chosenEffect === 'damage_quarter' || chosenEffect === 'damage_fixed'
@@ -1911,8 +1910,13 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
                 {isReward ? '🎁' : isDamage ? '💔' : '📋'} Elegiste: <span className="font-normal text-white">{chosenLabel}</span>
               </div>
             )}
+            {/* Text specific to the chosen option (optionAText / optionBText) */}
+            {chosenText && (
+              <p className="mb-3 whitespace-pre-wrap text-sm leading-6 text-slate-100">{chosenText}</p>
+            )}
+            {/* General explanation (shown after the option-specific text) */}
             {explanation && (
-              <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-slate-200">{explanation}</p>
+              <p className="mb-4 whitespace-pre-wrap text-sm leading-6 text-slate-300 italic">{explanation}</p>
             )}
             <button
               onClick={dismissStoryFeedback}

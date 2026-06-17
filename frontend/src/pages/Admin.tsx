@@ -3040,12 +3040,26 @@ export default function AdminPage() {
                           />
                           <div className="md:col-span-2">
                             <LabeledInput
-                              label="Explicacion (aparece al alumno)"
+                              label="Explicacion general (se muestra siempre)"
                               value={event.explanation || ''}
                               onChange={value => updateStoryEvent(index, { explanation: value })}
-                              placeholder="La A es correcta porque..."
+                              placeholder="Explicacion que aparece tras cualquier eleccion..."
                             />
                           </div>
+                        </div>
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <LabeledInput
+                            label="Texto si elige Opcion A"
+                            value={event.optionAText || ''}
+                            onChange={value => updateStoryEvent(index, { optionAText: value })}
+                            placeholder="Texto para cuando elige A..."
+                          />
+                          <LabeledInput
+                            label="Texto si elige Opcion B"
+                            value={event.optionBText || ''}
+                            onChange={value => updateStoryEvent(index, { optionBText: value })}
+                            placeholder="Texto para cuando elige B..."
+                          />
                         </div>
                       </div>
                     </div>
