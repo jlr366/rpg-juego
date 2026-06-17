@@ -266,7 +266,7 @@ function itemFromConfig(item: StoryNodeItemConfig): Item {
  * Component: ExplorationPanel
  * Main exploration UI with persistent scene title, central log and node actions.
  */
-export const ExplorationPanel: React.FC = () => {
+export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = false }) => {
   const { user } = useAuth()
   const {
     acquireItem,
@@ -293,6 +293,7 @@ export const ExplorationPanel: React.FC = () => {
     autoWinCombat,
     equipment,
   } = useGame()
+  const effectiveInjure = demoMode ? (() => {}) : injure
 
   /**
    * Safe helpers for scene APIs (fallbacks if missing).
@@ -722,7 +723,7 @@ export const ExplorationPanel: React.FC = () => {
     }
 
     if (effect === 'damage_half') {
-      injure(Math.max(1, Math.ceil(health / 2)), step)
+      effectiveInjure(Math.max(1, Math.ceil(health / 2)), step)
       return
     }
 
@@ -775,7 +776,7 @@ export const ExplorationPanel: React.FC = () => {
 
   const applyGameLoss = (loseText: string) => {
     const penalty = Math.max(1, Math.ceil(health / 4))
-    injure(penalty, step)
+    effectiveInjure(penalty, step)
     setLastPenaltyHP(penalty)
     playOneShot((storyConfig as any)?.defeatSound)
     setEventResultText(loseText)
@@ -951,7 +952,7 @@ export const ExplorationPanel: React.FC = () => {
       if (damage >= health) {
         storyKill('La sangre del hada te consume; tu vida se extingue.', step)
       } else {
-        injure(damage, step)
+        effectiveInjure(damage, step)
         markCurrentResolved()
       }
     }
@@ -1479,8 +1480,37 @@ export const ExplorationPanel: React.FC = () => {
     ? 'font-semibold text-lg md:text-xl tracking-tight inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r from-rose-700/25 via-rose-600/15 to-transparent shadow-sm animate-pulse'
     : 'font-semibold text-lg md:text-xl tracking-tight'
 
+  const activeMiniGameName =
+    activeRunnerEvent      ? (activeRunnerEvent.title      || 'Desafío Runner') :
+    activeMemoryEvent      ? (activeMemoryEvent.title      || 'Duelo de Memoria') :
+    activeTechQuizEvent    ? (activeTechQuizEvent.title    || 'AWS Quiz') :
+    activeTechSnakeEvent   ? (activeTechSnakeEvent.title   || 'Snake Tecnológico') :
+    activeMinefieldEvent   ? (activeMinefieldEvent.title   || 'Campo de Minas') :
+    activeDiceCombatEvent  ? (activeDiceCombatEvent.title  || 'Combate con Dados') :
+    activeCircuitPuzzleEvent ? (activeCircuitPuzzleEvent.title || 'Circuito Eléctrico') :
+    activeNetworkCardEvent ? (activeNetworkCardEvent.title || 'Duelo de Red AWS') :
+    ''
+
+  const resolveActiveMiniGame = (result: 'win' | 'loss') => {
+    if (activeRunnerEvent)       finishRunnerEvent(activeRunnerEvent, result)
+    else if (activeMemoryEvent)  finishMemoryDuel(activeMemoryEvent, result)
+    else if (activeTechQuizEvent) finishTechQuiz(activeTechQuizEvent, result)
+    else if (activeTechSnakeEvent) finishTechSnake(activeTechSnakeEvent, result)
+    else if (activeMinefieldEvent) finishMinefield(activeMinefieldEvent, result)
+    else if (activeDiceCombatEvent) finishDiceCombat(activeDiceCombatEvent, result)
+    else if (activeCircuitPuzzleEvent) finishCircuitPuzzle(activeCircuitPuzzleEvent, result)
+    else if (activeNetworkCardEvent) finishNetworkCard(activeNetworkCardEvent, result)
+  }
+
   return (
     <div className={`relative rounded-lg border-2 border-[#6b371d] bg-[#2d160d]/95 p-5 shadow-[0_14px_40px_rgba(0,0,0,0.5),inset_0_0_0_2px_rgba(245,193,108,0.14)] md:p-6 ${isDeath ? 'ring-1 ring-rose-600/40' : ''}`}>
+
+      {demoMode && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-purple-400/50 bg-purple-900/60 px-4 py-2 text-sm font-black text-purple-200 shadow">
+          <span className="text-lg">🎭</span>
+          MODO DEMO — Sin efectos reales · Vida infinita · Mini-juegos saltables
+        </div>
+      )}
 
       {/* -- Combat splash overlay ------------------------------------------- */}
       {combatSplash && (
@@ -1613,65 +1643,107 @@ export const ExplorationPanel: React.FC = () => {
       {(activeRunnerEvent || activeMemoryEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent) && (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/85 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-4xl px-4 py-6">
-            {activeRunnerEvent && (
-              <RunnerGame
-                event={activeRunnerEvent}
-                inventory={inventory}
-                onFinish={(result, wageredItemId) => finishRunnerEvent(activeRunnerEvent, result, wageredItemId)}
-              />
-            )}
-            {activeMemoryEvent && (
-              <MemoryDuelBoard
-                event={activeMemoryEvent}
-                inventory={inventory}
-                onFinish={(result, wageredItemId) => finishMemoryDuel(activeMemoryEvent, result, wageredItemId)}
-              />
-            )}
-            {activeTechQuizEvent && (
-              <TechQuizGame
-                event={activeTechQuizEvent}
-                onFinish={(result) => finishTechQuiz(activeTechQuizEvent, result)}
-              />
-            )}
-            {activeTechSnakeEvent && (
-              <TechSnakeGame
-                event={activeTechSnakeEvent}
-                onFinish={(result) => finishTechSnake(activeTechSnakeEvent, result)}
-              />
-            )}
-            {activeMinefieldEvent && (
-              <MinefieldGame
-                event={activeMinefieldEvent}
-                playerAttack={Math.max(5, Object.values(equipment).reduce((s, it) => s + (it?.power || 0), 0))}
-                playerHealth={health}
-                playerMaxHealth={maxHealth}
-                onFinish={(result) => finishMinefield(activeMinefieldEvent, result)}
-                onDamagePlayer={(dmg) => injure(dmg, step)}
-              />
-            )}
-            {activeDiceCombatEvent && (
-              <DiceCombatGame
-                event={activeDiceCombatEvent}
-                playerHealth={health}
-                playerMaxHealth={maxHealth}
-                onFinish={(result) => finishDiceCombat(activeDiceCombatEvent, result)}
-                onDamagePlayer={(dmg) => injure(dmg, step)}
-              />
-            )}
-            {activeCircuitPuzzleEvent && (
-              <CircuitPuzzleGame
-                event={activeCircuitPuzzleEvent}
-                playerHealth={health}
-                playerMaxHealth={maxHealth}
-                onFinish={(result) => finishCircuitPuzzle(activeCircuitPuzzleEvent, result)}
-                onDamagePlayer={(dmg) => injure(dmg, step)}
-              />
-            )}
-            {activeNetworkCardEvent && (
-              <NetworkCardGame
-                event={activeNetworkCardEvent}
-                onFinish={(result) => finishNetworkCard(activeNetworkCardEvent, result)}
-              />
+
+            {/* Demo mode: skip panel instead of actual game */}
+            {demoMode ? (
+              <div className="flex flex-col items-center gap-6 rounded-2xl border border-purple-500/50 bg-purple-950/90 p-10 text-center shadow-2xl">
+                <span className="text-5xl">🎭</span>
+                <div className="text-2xl font-black text-purple-200">MODO DEMO</div>
+                <p className="text-purple-300">Mini-juego: <span className="font-black text-white">{activeMiniGameName}</span></p>
+                <p className="text-sm text-purple-400">En el juego real los estudiantes jugarian aqui. Elige como simular el resultado:</p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => resolveActiveMiniGame('win')}
+                    className="rounded-xl bg-emerald-600 px-6 py-3 font-black text-white shadow hover:bg-emerald-500 active:scale-95"
+                  >
+                    ✅ Simular victoria
+                  </button>
+                  <button
+                    onClick={() => resolveActiveMiniGame('loss')}
+                    className="rounded-xl bg-rose-700 px-6 py-3 font-black text-white shadow hover:bg-rose-600 active:scale-95"
+                  >
+                    ❌ Simular derrota
+                  </button>
+                </div>
+                <p className="text-xs text-purple-600">Sin daño a la vida en modo demo</p>
+              </div>
+            ) : (
+              <>
+                {activeRunnerEvent && (
+                  <RunnerGame
+                    event={activeRunnerEvent}
+                    inventory={inventory}
+                    onFinish={(result, wageredItemId) => finishRunnerEvent(activeRunnerEvent, result, wageredItemId)}
+                  />
+                )}
+                {activeMemoryEvent && (
+                  <MemoryDuelBoard
+                    event={activeMemoryEvent}
+                    inventory={inventory}
+                    onFinish={(result, wageredItemId) => finishMemoryDuel(activeMemoryEvent, result, wageredItemId)}
+                  />
+                )}
+                {activeTechQuizEvent && (
+                  <TechQuizGame
+                    event={activeTechQuizEvent}
+                    onFinish={(result) => finishTechQuiz(activeTechQuizEvent, result)}
+                  />
+                )}
+                {activeTechSnakeEvent && (
+                  <TechSnakeGame
+                    event={activeTechSnakeEvent}
+                    onFinish={(result) => finishTechSnake(activeTechSnakeEvent, result)}
+                  />
+                )}
+                {activeMinefieldEvent && (
+                  <MinefieldGame
+                    event={activeMinefieldEvent}
+                    playerAttack={Math.max(5, Object.values(equipment).reduce((s, it) => s + (it?.power || 0), 0))}
+                    playerHealth={health}
+                    playerMaxHealth={maxHealth}
+                    onFinish={(result) => finishMinefield(activeMinefieldEvent, result)}
+                    onDamagePlayer={(dmg) => effectiveInjure(dmg, step)}
+                  />
+                )}
+                {activeDiceCombatEvent && (
+                  <DiceCombatGame
+                    event={activeDiceCombatEvent}
+                    playerHealth={health}
+                    playerMaxHealth={maxHealth}
+                    onFinish={(result) => finishDiceCombat(activeDiceCombatEvent, result)}
+                    onDamagePlayer={(dmg) => effectiveInjure(dmg, step)}
+                  />
+                )}
+                {activeCircuitPuzzleEvent && (
+                  <CircuitPuzzleGame
+                    event={activeCircuitPuzzleEvent}
+                    playerHealth={health}
+                    playerMaxHealth={maxHealth}
+                    onFinish={(result) => finishCircuitPuzzle(activeCircuitPuzzleEvent, result)}
+                    onDamagePlayer={(dmg) => effectiveInjure(dmg, step)}
+                  />
+                )}
+                {activeNetworkCardEvent && (
+                  <NetworkCardGame
+                    event={activeNetworkCardEvent}
+                    onFinish={(result) => finishNetworkCard(activeNetworkCardEvent, result)}
+                  />
+                )}
+
+                {/* Surrender button — always visible during any real mini-game */}
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => {
+                      if (window.confirm('¿Rendirse? Perderás este mini-juego y recibirás una penalización de vida.')) {
+                        resolveActiveMiniGame('loss')
+                      }
+                    }}
+                    className="rounded-lg border border-rose-500/40 bg-rose-950/70 px-5 py-2 text-sm font-bold text-rose-300 shadow hover:bg-rose-900/80 active:scale-95"
+                  >
+                    🏳️ Rendirse (perder el mini-juego)
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>

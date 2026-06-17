@@ -2546,6 +2546,12 @@ export default function AdminPage() {
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
             <button
+              onClick={() => window.open(window.location.origin + window.location.pathname + '#/demo', '_blank')}
+              className="inline-flex items-center gap-2 rounded-lg border border-purple-500/40 bg-purple-700/80 px-4 py-2 text-sm font-semibold shadow transition hover:bg-purple-600"
+            >
+              🎭 Demo
+            </button>
+            <button
               onClick={handleLogout}
               className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-600/80 px-4 py-2 text-sm font-semibold shadow transition hover:bg-red-600"
             >
