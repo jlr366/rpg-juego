@@ -396,18 +396,18 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         const config = data.config || null
         setStoryConfig(config)
         const updateMarker = localStorage.getItem('rpg-story-config-updated-at') || ''
+        const prevMarker = lastStoryUpdateRef.current
         lastStoryUpdateRef.current = updateMarker
 
         if (!config?.scenes?.length) return
 
         if (demoMode) {
-          // In demo mode: on config reload just refresh storyConfig in place so the admin
-          // sees updated content at their current node without going back to the first scene.
-          // Only set to first scene if there's no current scene yet.
+          // In demo mode: refresh config in place so the admin sees changes at their
+          // current node without navigating from the first scene each time.
           if (!currentSceneKey || !config.scenes.some((s: StorySceneConfig) => s.key === currentSceneKey)) {
             setCurrentSceneKey(config.scenes[0].key)
           }
-          // Clear only the resolved-events state so events appear fresh after each admin save
+          // Clear resolved state so events appear fresh after each admin save
           setResolvedStoryEvents({})
           setResolvedMemoryEvents({})
           setResolvedConfiguredEnemies({})
@@ -417,7 +417,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
           return
         }
 
-        const shouldForceFirst = forceFirstScene || (updateMarker && updateMarker !== lastStoryUpdateRef.current)
+        const shouldForceFirst = forceFirstScene || (updateMarker !== '' && updateMarker !== prevMarker)
         if (shouldForceFirst) {
           setCurrentSceneKey(config.scenes[0].key)
           setCurrentIndex(0)
