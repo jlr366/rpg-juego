@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { BookmarkPlus, Flag, FolderOpen, GitBranch, LogOut, MapPin, Music, PackagePlus, Pencil, Plus, Save, Shield, Skull, Trash2 } from 'lucide-react'
+import { BookmarkPlus, Flag, FolderOpen, GitBranch, LogOut, MapPin, Music, PackagePlus, Pencil, Plus, Save, Shield, Skull, Swords, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthProvider'
 import { API_BASE_URL } from '../config'
 import { RunnerGame } from '../components/RunnerGame'
@@ -3902,6 +3902,32 @@ export default function AdminPage() {
           ))}
         </AdminList>
 
+        <AdminList title="8. Combates de Dados" icon={<Swords className="h-5 w-5 text-amber-300" />} onAdd={undefined}>
+          {(config.diceCombatEvents || []).length === 0 && (
+            <div className="text-sm italic text-slate-500">Sin combates de dados configurados.</div>
+          )}
+          {(config.diceCombatEvents || []).map((event, index) => (
+            <div key={index} className="rounded border border-amber-800/40 bg-slate-900 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-bold text-amber-300">
+                  🎲 {event.title || '(sin título)'} — nodo <span className="font-mono text-yellow-200">{event.sceneKey || '?'}</span>
+                </span>
+                <button
+                  onClick={() => setConfig(prev => ({ ...prev, diceCombatEvents: (prev.diceCombatEvents || []).filter((_, i) => i !== index) }))}
+                  className="inline-flex items-center gap-1 rounded bg-red-700/60 px-2 py-1 text-xs text-red-200 hover:bg-red-600"
+                >
+                  <Trash2 className="h-3 w-3" /> Eliminar
+                </button>
+              </div>
+              <div className="grid gap-2 text-xs text-slate-400 md:grid-cols-3">
+                <span>Clave: <span className="font-mono text-slate-200">{event.key}</span></span>
+                <span>Nodo: <span className="font-mono text-yellow-300">{event.sceneKey}</span></span>
+                <span>Enemigo: <span className="text-slate-200">{event.enemyName || '(vacío)'}</span></span>
+              </div>
+            </div>
+          ))}
+        </AdminList>
+
         {/* -- Banco de pruebas mini-juegos -- */}
         <section className="rounded-xl border border-violet-500/30 bg-slate-900/80 p-5 shadow-lg">
           <h2 className="mb-1 flex items-center gap-2 text-xl font-bold text-violet-200">
@@ -4177,14 +4203,16 @@ function MiniGamesPlayground() {
   )
 }
 
-function AdminList({ title, icon, onAdd, children }: { title: string; icon: React.ReactNode; onAdd: () => void; children: React.ReactNode }) {
+function AdminList({ title, icon, onAdd, children }: { title: string; icon: React.ReactNode; onAdd?: () => void; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-slate-700/60 bg-slate-900/80 p-5 shadow-lg">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="inline-flex items-center gap-2 text-xl font-bold text-white">{icon} {title}</h2>
-        <button onClick={onAdd} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-600/80 px-3 py-2 text-sm font-semibold shadow transition hover:bg-blue-600">
-          <Plus className="h-4 w-4" /> Agregar
-        </button>
+        {onAdd && (
+          <button onClick={onAdd} className="inline-flex items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-600/80 px-3 py-2 text-sm font-semibold shadow transition hover:bg-blue-600">
+            <Plus className="h-4 w-4" /> Agregar
+          </button>
+        )}
       </div>
       <div className="space-y-3">{children}</div>
     </section>

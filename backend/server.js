@@ -425,7 +425,7 @@ function normalizeStoryConfig(config) {
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
-          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey) && ev.title)
+          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
     circuitPuzzleEvents: Array.isArray(config?.circuitPuzzleEvents)
       ? config.circuitPuzzleEvents
