@@ -3025,6 +3025,29 @@ export default function AdminPage() {
                         <LabeledInput label="Opcion B" value={event.optionBLabel} onChange={value => updateStoryEvent(index, { optionBLabel: value })} />
                         <LabeledSelect label="Efecto B" value={event.optionBEffect} onChange={value => updateStoryEvent(index, { optionBEffect: value as EventEffect })} options={eventEffectOptions} />
                       </div>
+                      <div className="mt-1 rounded border border-fuchsia-400/20 bg-fuchsia-950/30 p-2">
+                        <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">📚 Retroalimentacion</div>
+                        <div className="grid gap-2 md:grid-cols-3">
+                          <LabeledSelect
+                            label="Opcion correcta"
+                            value={event.correctOption || ''}
+                            onChange={value => updateStoryEvent(index, { correctOption: value as 'A' | 'B' | '' })}
+                            options={[
+                              { value: '', label: 'Sin respuesta correcta' },
+                              { value: 'A', label: 'Opcion A correcta' },
+                              { value: 'B', label: 'Opcion B correcta' },
+                            ]}
+                          />
+                          <div className="md:col-span-2">
+                            <LabeledInput
+                              label="Explicacion (aparece al alumno)"
+                              value={event.explanation || ''}
+                              onChange={value => updateStoryEvent(index, { explanation: value })}
+                              placeholder="La A es correcta porque..."
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
