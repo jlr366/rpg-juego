@@ -462,6 +462,9 @@ function normalizeStoryConfig(config) {
     globalMusicUrl: typeof config?.globalMusicUrl === 'string' ? config.globalMusicUrl.trim() : '',
     victorySound: typeof config?.victorySound === 'string' ? config.victorySound.trim() : '',
     defeatSound: typeof config?.defeatSound === 'string' ? config.defeatSound.trim() : '',
+    combatIntroImageUrl: typeof config?.combatIntroImageUrl === 'string' ? config.combatIntroImageUrl.trim() : '',
+    combatVictoryImageUrl: typeof config?.combatVictoryImageUrl === 'string' ? config.combatVictoryImageUrl.trim() : '',
+    combatDefeatImageUrl: typeof config?.combatDefeatImageUrl === 'string' ? config.combatDefeatImageUrl.trim() : '',
   }
 }
 

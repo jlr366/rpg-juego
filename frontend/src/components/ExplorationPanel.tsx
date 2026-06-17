@@ -1580,9 +1580,9 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         >
           <img
             src={
-              combatSplash === 'intro'   ? imgCombatIntro   :
-              combatSplash === 'victory' ? imgCombatVictory :
-              imgCombatDefeat
+              combatSplash === 'intro'   ? ((storyConfig as any)?.combatIntroImageUrl   || imgCombatIntro)   :
+              combatSplash === 'victory' ? ((storyConfig as any)?.combatVictoryImageUrl || imgCombatVictory) :
+              ((storyConfig as any)?.combatDefeatImageUrl || imgCombatDefeat)
             }
             alt={combatSplash}
             className="max-h-[60%] max-w-[85%] rounded-xl object-contain drop-shadow-2xl"

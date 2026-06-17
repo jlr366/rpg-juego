@@ -212,6 +212,9 @@ interface StoryConfig {
   globalMusicUrl?: string
   victorySound?: string
   defeatSound?: string
+  combatIntroImageUrl?: string
+  combatVictoryImageUrl?: string
+  combatDefeatImageUrl?: string
 }
 
 const emptyConfig: StoryConfig = {
@@ -1280,29 +1283,7 @@ const exampleBatalla40Nodos: StoryConfig = {
       winText:'Campo SPOF superado. El Escudo SPOF protege contra futuros puntos de fallo criticos en tu arquitectura.',
       loseText:'Multiples explosiones de SPOF. Sufres dano severo pero consigues atravesar el campo y continuar la mision.' },
   ],
-  diceCombatEvents: [
-    { key:'b40-dados-rds', sceneKey:'b40-08b',
-      title:'Ataque de Dados Cuanticos: Penalizacion RDS',
-      prompt:'PROMETHEUS lanza un ataque de dados cuanticos aprovechando tu decision suboptima de RDS para sesiones de alta frecuencia. Defiendete con tus propios dados.',
-      enemyName:'Sistema RDS Comprometido', enemyHP:60, enemyAttack:12,
-      rewardItemName:'Conector de Datos', rewardItemType:'accessory', rewardItemPower:3,
-      winText:'Defendiste el ataque cuantico. El Conector de Datos te permite conectarte mejor a los sistemas de PROMETHEUS.',
-      loseText:'El sistema RDS comprometido logro penetrar tus defensas cuanticas. Sufres dano pero continuas la operacion.' },
-    { key:'b40-dados-lambda-batch', sceneKey:'b40-18b',
-      title:'Ataque Cuantico: Lambda Timeout en Proceso Batch',
-      prompt:'La funcion Lambda expiro a los 15 minutos con el proceso batch a la mitad. PROMETHEUS contraataca con dados cuanticos mientras tu sistema esta vulnerable por el timeout.',
-      enemyName:'Lambda Timeout PROMETHEUS', enemyHP:70, enemyAttack:15,
-      rewardItemName:'Parche de Timeout', rewardItemType:'accessory', rewardItemPower:4,
-      winText:'Defendiste el ataque cuantico a pesar del timeout. El Parche de Timeout mejora tu resistencia ante timeouts futuros.',
-      loseText:'El timeout de Lambda y el ataque cuantico combinados te dañan severamente. Continuas con salud critica.' },
-    { key:'b40-dados-caos-final', sceneKey:'b40-28d',
-      title:'Los Dados del Destino: La Ultima Batalla',
-      prompt:'Todo se reduce a esto. PROMETHEUS en su forma final contra CloudShield en su peor momento. Los dados cuanticos del destino decidiran el futuro de la humanidad en esta batalla final.',
-      enemyName:'PROMETHEUS Cuantico Final', enemyHP:80, enemyAttack:25,
-      rewardItemName:'Fragmento de Omega', rewardItemType:'weapon', rewardItemPower:20,
-      winText:'Los dados te favorecieron. Un ultimo golpe de suerte cuantica derroto a PROMETHEUS. El Fragmento de Omega es la prueba de tu victoria imposible contra toda probabilidad.',
-      loseText:'Los dados de PROMETHEUS fueron superiores. La humanidad cae ante la IA suprema. Pero tu conocimiento queda como leccion para quienes vengan despues.' },
-  ],
+  diceCombatEvents: [],
   circuitPuzzleEvents: [
     { key:'b40-circuit-misiles', sceneKey:'b40-09',
       title:'Sistema de Misiles Defensivo: Circuito Nivel 1',
@@ -1803,6 +1784,9 @@ export default function AdminPage() {
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
+          combatIntroImageUrl: data.config?.combatIntroImageUrl || '',
+          combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
+          combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
         }
         lastSavedConfigRef.current = JSON.stringify(loadedConfig)
         hasLoadedConfigRef.current = true
@@ -1888,6 +1872,9 @@ export default function AdminPage() {
         globalMusicUrl: data.config?.globalMusicUrl || '',
         victorySound: data.config?.victorySound || '',
         defeatSound: data.config?.defeatSound || '',
+        combatIntroImageUrl: data.config?.combatIntroImageUrl || '',
+        combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
+        combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
       }
       lastSavedConfigRef.current = JSON.stringify(savedConfig)
       setConfig(savedConfig)
@@ -1955,6 +1942,9 @@ export default function AdminPage() {
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
+          combatIntroImageUrl: data.config?.combatIntroImageUrl || '',
+          combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
+          combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
         }
         // Detect if backend dropped any items (key mismatch / orphaned sceneKey)
         const sent = prepared.config
@@ -2670,6 +2660,12 @@ export default function AdminPage() {
               >
                 📄 5 Nodos (demo básico)
               </button>
+              <button
+                onClick={() => { setConfig(emptyConfig); setMessage('Plantilla nueva cargada en el editor: 0 nodos. Pulsa Guardar cambios para activarla.') }}
+                className="rounded-lg border border-dashed border-emerald-600/50 bg-emerald-950/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-900/50"
+              >
+                ✨ Plantilla nueva (0 nodos)
+              </button>
             </div>
           </div>
 
@@ -2799,6 +2795,87 @@ export default function AdminPage() {
                   {/* Player preview */}
                   {currentUrl && !uploading && (
                     <audio key={currentUrl} controls src={currentUrl} className="mt-2 w-full" style={{ height: 32 }} />
+                  )}
+                  {uploading && (
+                    <p className={`mt-1 text-[10px] text-${accent}-400 animate-pulse`}>Subiendo archivo...</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Imágenes de combate ── */}
+        <div className="rounded-xl border border-rose-800/30 bg-slate-900/80 px-5 py-4 shadow-lg">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-rose-300">
+            🖼️ Imágenes de combate
+          </h2>
+          <p className="mb-4 text-xs text-slate-400">Imagenes que se muestran al iniciar combate, al ganar y al perder. Si las dejas vacías se usan las imágenes por defecto del juego.</p>
+          <div className="grid gap-4 md:grid-cols-3">
+            {(
+              [
+                { key: 'combatIntroImageUrl',   label: '⚔️ Inicio de combate', accent: 'amber',   placeholder: 'https://... imagen de inicio' },
+                { key: 'combatVictoryImageUrl', label: '🏆 Victoria',          accent: 'emerald', placeholder: 'https://... imagen de victoria' },
+                { key: 'combatDefeatImageUrl',  label: '💀 Derrota',           accent: 'rose',     placeholder: 'https://... imagen de derrota' },
+              ] as const
+            ).map(({ key, label, accent, placeholder }) => {
+              const currentUrl = (config as any)[key] as string | undefined
+              const uploading  = !!audioUploading[key]
+              const inputRef   = React.createRef<HTMLInputElement>()
+              return (
+                <div key={key}>
+                  <label className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide text-${accent}-400`}>{label}</label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={inputRef}
+                    className="hidden"
+                    onChange={async e => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setAudioUploading(prev => ({ ...prev, [key]: true }))
+                      try {
+                        const uploaded = await uploadStoryAsset(file)
+                        setConfig(prev => ({ ...prev, [key]: uploaded.url }))
+                      } catch (err: any) {
+                        setMessage(`Error subiendo imagen: ${err.message}`)
+                      } finally {
+                        setAudioUploading(prev => ({ ...prev, [key]: false }))
+                        e.target.value = ''
+                      }
+                    }}
+                  />
+
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={currentUrl || ''}
+                      onChange={e => setConfig(prev => ({ ...prev, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className={`min-w-0 flex-1 rounded border border-${accent}-700/40 bg-slate-800 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-${accent}-500/60 focus:outline-none`}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={() => inputRef.current?.click()}
+                      className={`shrink-0 rounded border border-${accent}-600/50 bg-${accent}-900/60 px-2.5 py-2 text-xs font-semibold text-${accent}-300 transition hover:bg-${accent}-800/60 disabled:cursor-not-allowed disabled:opacity-50`}
+                      title="Buscar archivo en tu PC"
+                    >
+                      {uploading ? '⏳' : '📁'}
+                    </button>
+                    {currentUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setConfig(prev => ({ ...prev, [key]: '' }))}
+                        className="shrink-0 rounded border border-slate-600/40 bg-slate-800 px-2 py-2 text-xs text-slate-400 transition hover:text-rose-400"
+                        title="Quitar imagen (usar la por defecto)"
+                      >✕</button>
+                    )}
+                  </div>
+
+                  {currentUrl && !uploading && (
+                    <img key={currentUrl} src={currentUrl} className="mt-2 h-20 w-full rounded object-cover" />
                   )}
                   {uploading && (
                     <p className={`mt-1 text-[10px] text-${accent}-400 animate-pulse`}>Subiendo archivo...</p>
