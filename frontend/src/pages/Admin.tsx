@@ -1906,7 +1906,11 @@ export default function AdminPage() {
     // NOT when the only change is mapLocations
     const lastSaved = lastSavedConfigRef.current ? JSON.parse(lastSavedConfigRef.current) : null
     const onlyMapLocationsChanged = lastSaved && JSON.stringify({ ...config, mapLocations: [] }) === JSON.stringify({ ...lastSaved, mapLocations: [] })
-    if (!onlyMapLocationsChanged && findDraftProblem(config)) return
+    const draftBlock = !onlyMapLocationsChanged && findDraftProblem(config)
+    if (draftBlock) {
+      setMessage(`⚠️ Guardado pausado: ${draftBlock}`)
+      return
+    }
 
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = window.setTimeout(async () => {
@@ -1916,7 +1920,15 @@ export default function AdminPage() {
           method: 'PUT',
           body: JSON.stringify({ config: prepared.config }),
         })
-        if (!response.ok) return
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            setMessage('⚠️ Sesion expirada. Recarga la pagina e inicia sesion de nuevo, o pide al administrador que configure ADMIN_PASSWORD en Railway.')
+          } else {
+            const errData = await response.json().catch(() => null)
+            setMessage(`⚠️ Error en guardado automatico (${response.status}): ${errData?.error || 'error desconocido'}`)
+          }
+          return
+        }
         const data = await response.json()
         const savedConfig = {
           scenes: (data.config?.scenes || []).map(normalizeScene),
@@ -1946,6 +1958,7 @@ export default function AdminPage() {
         setMessage('Guardado automatico. El juego ya recibio estos cambios.')
       } catch (error) {
         console.error('Error en guardado automatico:', error)
+        setMessage(`⚠️ Error en guardado automatico: ${error instanceof Error ? error.message : 'error de red'}`)
       }
     }, 800)
 
