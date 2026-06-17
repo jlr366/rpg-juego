@@ -3008,6 +3008,24 @@ export default function AdminPage() {
                   }
                 </div>
 
+                {/* Enemigos de combate regular */}
+                <div className="rounded border border-rose-400/25 bg-rose-950/15 p-3">
+                  <div className="mb-2 font-semibold text-rose-200">⚔️ Combate (enemigos)</div>
+                  {selectedEnemies.length === 0
+                    ? <div className="text-xs text-slate-400">Sin enemigos en este nodo.</div>
+                    : selectedEnemies.map(({ enemy, index }) => (
+                      <div key={`quick-enemy-${index}`} className="relative mb-2 rounded bg-slate-900 p-2">
+                        <button onClick={() => setConfig(prev => ({ ...prev, enemies: prev.enemies.filter((_, i) => i !== index) }))} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-red-600/80 text-[10px] font-bold text-white hover:bg-red-600" title="Eliminar">✕</button>
+                        <div className="grid gap-2 pr-6 md:grid-cols-3">
+                          <LabeledInput label="Nombre" value={enemy.name} onChange={value => updateEnemy(index, { name: value })} placeholder="Robot Digital" />
+                          <LabeledNumber label="Ataque" value={enemy.attack} onChange={value => updateEnemy(index, { attack: value })} />
+                          <LabeledNumber label="Defensa (HP)" value={enemy.defense} onChange={value => updateEnemy(index, { defense: value })} />
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+
                 <div className="rounded border border-fuchsia-300/25 bg-fuchsia-950/20 p-3">
                   <div className="mb-2 font-semibold text-fuchsia-100">Eventos de dos opciones</div>
                   {selectedStoryEvents.length === 0 && <div className="text-xs text-white">Sin eventos en este nodo.</div>}
