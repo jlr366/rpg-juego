@@ -161,7 +161,6 @@ const DEFAULT_STORY_CONFIG = {
   runnerEvents: [],
   quizEvents: [],
   snakeEvents: [],
-  archEvents: [],
   minefieldEvents: [],
   diceCombatEvents: [],
   circuitPuzzleEvents: [],
@@ -356,6 +355,9 @@ function normalizeStoryConfig(config) {
             rewardItemPower: Number.isFinite(Number(ev.rewardItemPower)) ? Number(ev.rewardItemPower) : 0,
             winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
+            questionIds: Array.isArray(ev.questionIds)
+              ? ev.questionIds.filter(id => typeof id === 'string' && id.trim()).map(id => id.trim())
+              : [],
           }))
           .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
       : [],
@@ -367,21 +369,6 @@ function normalizeStoryConfig(config) {
             title: typeof ev.title === 'string' ? ev.title.trim() : '',
             prompt: typeof ev.prompt === 'string' ? ev.prompt.trim() : '',
             targetScore: Number.isFinite(Number(ev.targetScore)) ? Math.max(1, Number(ev.targetScore)) : 80,
-            rewardItemName: typeof ev.rewardItemName === 'string' ? ev.rewardItemName.trim() : '',
-            rewardItemType: typeof ev.rewardItemType === 'string' ? ev.rewardItemType.trim() : 'misc',
-            rewardItemPower: Number.isFinite(Number(ev.rewardItemPower)) ? Number(ev.rewardItemPower) : 0,
-            winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
-            loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
-          }))
-          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
-      : [],
-    archEvents: Array.isArray(config?.archEvents)
-      ? config.archEvents
-          .map((ev, index) => ({
-            key: typeof ev.key === 'string' && ev.key.trim() ? ev.key.trim() : `arch${index + 1}`,
-            sceneKey: typeof ev.sceneKey === 'string' ? ev.sceneKey.trim() : '',
-            title: typeof ev.title === 'string' ? ev.title.trim() : '',
-            levelId: Number.isFinite(Number(ev.levelId)) ? Math.max(0, Math.min(2, Number(ev.levelId))) : 0,
             rewardItemName: typeof ev.rewardItemName === 'string' ? ev.rewardItemName.trim() : '',
             rewardItemType: typeof ev.rewardItemType === 'string' ? ev.rewardItemType.trim() : 'misc',
             rewardItemPower: Number.isFinite(Number(ev.rewardItemPower)) ? Number(ev.rewardItemPower) : 0,

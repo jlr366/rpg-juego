@@ -146,7 +146,6 @@ interface StoryConfig {
   snakeEvents?: TechSnakeEventConfig[]
   minefieldEvents?: MinefieldEventConfig[]
   networkCardEvents?: NetworkCardEventConfig[]
-  archEvents?: any[]
   circuitLevels?: import('./CircuitPuzzleGame').CircuitLevelConfig[]
 }
 

@@ -156,20 +156,18 @@ const LEVELS: LevelDef[] = [
 
 // ─── CompCard ─────────────────────────────────────────────────────────────────
 
-function CompCard({ id, used, dragging, onDragStart }: {
-  id: CompId; used: boolean; dragging: boolean; onDragStart: (id: CompId) => void
+function CompCard({ id, dragging, onDragStart }: {
+  id: CompId; dragging: boolean; onDragStart: (id: CompId) => void
 }) {
   const def = COMP_DEFS[id]
   return (
     <div
-      draggable={!used}
-      onDragStart={() => { if (!used) onDragStart(id) }}
+      draggable
+      onDragStart={() => onDragStart(id)}
       className={`flex flex-col items-center gap-1 rounded-lg border p-2 transition-all select-none
-        ${used
-          ? 'opacity-20 cursor-not-allowed border-slate-700 bg-slate-900/20'
-          : dragging
-            ? 'opacity-50 scale-95 border-cyan-400/60 bg-cyan-900/30 cursor-grabbing'
-            : 'cursor-grab border-slate-600/50 bg-slate-800/70 hover:border-cyan-400/60 hover:bg-slate-700/80 hover:scale-105 active:scale-95'
+        ${dragging
+          ? 'opacity-50 scale-95 border-cyan-400/60 bg-cyan-900/30 cursor-grabbing'
+          : 'cursor-grab border-slate-600/50 bg-slate-800/70 hover:border-cyan-400/60 hover:bg-slate-700/80 hover:scale-105 active:scale-95'
         }`}
       style={{ width: 76 }}
     >
@@ -305,7 +303,6 @@ export const CircuitPuzzleGame: React.FC<Props> = ({
   const filledCount  = level.slots.filter(s => placed[s.id] !== null).length
   const allFilled    = filledCount === level.slots.length
 
-  const usedInPanel  = (id: CompId) => Object.values(placed).some(v => v === id)
   const vpcSlots     = level.slots.filter(s => s.insideVpc)
   const nonVpcSlots  = level.slots.filter(s => !s.insideVpc)
   // Slots sharing the same `col` stack vertically (row 1 = main chain, row 2+ = parallel branch below)
@@ -464,7 +461,6 @@ export const CircuitPuzzleGame: React.FC<Props> = ({
               <CompCard
                 key={id}
                 id={id}
-                used={usedInPanel(id)}
                 dragging={dragging === id}
                 onDragStart={handleDragStart}
               />

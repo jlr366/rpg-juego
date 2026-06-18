@@ -4,10 +4,9 @@ import { BookmarkPlus, Flag, FolderOpen, GitBranch, LogOut, MapPin, Music, Packa
 import { useAuth } from '../context/AuthProvider'
 import { API_BASE_URL } from '../config'
 import { RunnerGame } from '../components/RunnerGame'
-import { TechQuizGame } from '../components/TechQuizGame'
+import { TechQuizGame, QUESTION_BANK } from '../components/TechQuizGame'
 import { TechSnakeGame } from '../components/TechSnakeGame'
 import { MemoryDuelBoard } from '../components/ExplorationPanel'
-import { ArchitectureGame } from '../components/ArchitectureGame'
 import { MinefieldGame } from '../components/MinefieldGame'
 import { DiceCombatGame, DiceCombatEventConfig } from '../components/DiceCombatGame'
 import { CircuitPuzzleGame, CircuitPuzzleEventConfig, CircuitLevelConfig, CompId, COMP_DEFS, SlotDef } from '../components/CircuitPuzzleGame'
@@ -148,6 +147,7 @@ interface QuizEventConfig {
   rewardItemPower?: number
   winText?: string
   loseText?: string
+  questionIds?: string[]
 }
 
 interface SnakeEventConfig {
@@ -156,18 +156,6 @@ interface SnakeEventConfig {
   title?: string
   prompt?: string
   targetScore?: number
-  rewardItemName?: string
-  rewardItemType?: string
-  rewardItemPower?: number
-  winText?: string
-  loseText?: string
-}
-
-interface ArchEventConfig {
-  key: string
-  sceneKey: string
-  title?: string
-  levelId?: number
   rewardItemName?: string
   rewardItemType?: string
   rewardItemPower?: number
@@ -204,7 +192,6 @@ interface StoryConfig {
   runnerEvents: RunnerEventConfig[]
   quizEvents?: QuizEventConfig[]
   snakeEvents?: SnakeEventConfig[]
-  archEvents?: ArchEventConfig[]
   minefieldEvents?: MinefieldEventConfig[]
   diceCombatEvents?: DiceCombatEventConfig[]
   circuitPuzzleEvents?: CircuitPuzzleEventConfig[]
@@ -231,7 +218,6 @@ const emptyConfig: StoryConfig = {
   runnerEvents: [],
   quizEvents: [],
   snakeEvents: [],
-  archEvents: [],
   minefieldEvents: [],
   diceCombatEvents: [],
   circuitPuzzleEvents: [],
@@ -798,7 +784,6 @@ export default function AdminPage() {
           runnerEvents: data.config?.runnerEvents || [],
           quizEvents: data.config?.quizEvents || [],
           snakeEvents: data.config?.snakeEvents || [],
-          archEvents: data.config?.archEvents || [],
           minefieldEvents: data.config?.minefieldEvents || [],
           diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
@@ -888,7 +873,6 @@ export default function AdminPage() {
         runnerEvents: data.config?.runnerEvents || [],
         quizEvents: data.config?.quizEvents || [],
         snakeEvents: data.config?.snakeEvents || [],
-        archEvents: data.config?.archEvents || [],
         minefieldEvents: data.config?.minefieldEvents || [],
         diceCombatEvents: data.config?.diceCombatEvents || [],
         circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
@@ -966,7 +950,6 @@ export default function AdminPage() {
           runnerEvents: data.config?.runnerEvents || [],
           quizEvents: data.config?.quizEvents || [],
           snakeEvents: data.config?.snakeEvents || [],
-          archEvents: data.config?.archEvents || [],
           minefieldEvents: data.config?.minefieldEvents || [],
           diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
@@ -1041,7 +1024,6 @@ export default function AdminPage() {
       runnerEvents:        rk(prev.runnerEvents as { sceneKey: string }[]) as typeof prev.runnerEvents,
       quizEvents:          rk(prev.quizEvents as { sceneKey: string }[]) as typeof prev.quizEvents,
       snakeEvents:         rk(prev.snakeEvents as { sceneKey: string }[]) as typeof prev.snakeEvents,
-      archEvents:          rk(prev.archEvents as { sceneKey: string }[]) as typeof prev.archEvents,
       minefieldEvents:     rk(prev.minefieldEvents as { sceneKey: string }[]) as typeof prev.minefieldEvents,
       diceCombatEvents:    rk(prev.diceCombatEvents as { sceneKey: string }[]) as typeof prev.diceCombatEvents,
       circuitPuzzleEvents: rk(prev.circuitPuzzleEvents as { sceneKey: string }[]) as typeof prev.circuitPuzzleEvents,
@@ -1322,27 +1304,23 @@ export default function AdminPage() {
     }))
   }
 
+  const toggleQuizQuestion = (index: number, questionId: string) => {
+    const allIds = QUESTION_BANK.map(q => q.id)
+    setConfig(prev => ({
+      ...prev,
+      quizEvents: (prev.quizEvents || []).map((event, i) => {
+        if (i !== index) return event
+        const current = event.questionIds && event.questionIds.length > 0 ? event.questionIds : allIds
+        const next = current.includes(questionId) ? current.filter(id => id !== questionId) : [...current, questionId]
+        return { ...event, questionIds: next.length === allIds.length ? [] : next }
+      }),
+    }))
+  }
+
   const updateSnakeEvent = (index: number, patch: Partial<SnakeEventConfig>) => {
     setConfig(prev => ({
       ...prev,
       snakeEvents: (prev.snakeEvents || []).map((event, i) => i === index ? { ...event, ...patch } : event),
-    }))
-  }
-
-  const addArchEventToNode = (sceneKey: string, levelId = 0) => {
-    const levelNames = ['Cuartel bajo ataque', 'Inteligencia distribuida', 'Alta disponibilidad']
-    const count = (config.archEvents || []).filter(e => e.sceneKey === sceneKey).length + 1
-    setConfig(prev => ({
-      ...prev,
-      archEvents: [...(prev.archEvents || []), { key: `arch${count}`, sceneKey, title: `Arquitectura N${levelId + 1} - ${levelNames[levelId] || ''}`, levelId, rewardItemName: '', rewardItemType: 'misc', rewardItemPower: 0, winText: '', loseText: '' }],
-    }))
-    setMessage(`Arquitectura Nivel ${levelId + 1} agregada al nodo ${sceneKey}.`)
-  }
-
-  const updateArchEvent = (index: number, patch: Partial<ArchEventConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      archEvents: (prev.archEvents || []).map((event, i) => i === index ? { ...event, ...patch } : event),
     }))
   }
 
@@ -1593,9 +1571,6 @@ export default function AdminPage() {
     .map((event, index) => ({ event, index }))
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
   const selectedSnakeEvents = (config.snakeEvents || [])
-    .map((event, index) => ({ event, index }))
-    .filter(({ event }) => event.sceneKey === selectedSceneKey)
-  const selectedArchEvents = (config.archEvents || [])
     .map((event, index) => ({ event, index }))
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
   const selectedMinefieldEvents = (config.minefieldEvents || [])
@@ -2397,9 +2372,6 @@ export default function AdminPage() {
                       <option value="runner">🏃 Runner 8-bit</option>
                       <option value="quiz">📋 Quiz AWS</option>
                       <option value="snake">🌐 Snake de Red</option>
-                      <option value="arch0">🏗️ Arquitectura N1 - Cuartel bajo ataque</option>
-                      <option value="arch1">🏗️ Arquitectura N2 - Inteligencia distribuida</option>
-                      <option value="arch2">🏗️ Arquitectura N3 - Alta disponibilidad</option>
                       <option value="minefield">💣 Combate Minesweeper</option>
                       <option value="dice">🎲 Combate de Dados</option>
                       <option value="circuit">🔌 Laboratorio de Circuito</option>
@@ -2412,9 +2384,6 @@ export default function AdminPage() {
                         else if (pendingGame === 'runner') addRunnerEventToNode(selectedSceneKey)
                         else if (pendingGame === 'quiz') addQuizEventToNode(selectedSceneKey)
                         else if (pendingGame === 'snake') addSnakeEventToNode(selectedSceneKey)
-                        else if (pendingGame === 'arch0') addArchEventToNode(selectedSceneKey, 0)
-                        else if (pendingGame === 'arch1') addArchEventToNode(selectedSceneKey, 1)
-                        else if (pendingGame === 'arch2') addArchEventToNode(selectedSceneKey, 2)
                         else if (pendingGame === 'minefield') addMinefieldToNode(selectedSceneKey)
                         else if (pendingGame === 'dice') addDiceCombatToNode(selectedSceneKey)
                         else if (pendingGame === 'circuit') addCircuitPuzzleToNode(selectedSceneKey)
@@ -2429,7 +2398,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Juegos asignados al nodo */}
-                  {selectedMemoryEvents.length === 0 && selectedRunnerEvents.length === 0 && selectedQuizEvents.length === 0 && selectedSnakeEvents.length === 0 && selectedArchEvents.length === 0 && selectedMinefieldEvents.length === 0 && selectedDiceCombatEvents.length === 0 && selectedCircuitPuzzleEvents.length === 0 && selectedNetworkCardEvents.length === 0 ? (
+                  {selectedMemoryEvents.length === 0 && selectedRunnerEvents.length === 0 && selectedQuizEvents.length === 0 && selectedSnakeEvents.length === 0 && selectedMinefieldEvents.length === 0 && selectedDiceCombatEvents.length === 0 && selectedCircuitPuzzleEvents.length === 0 && selectedNetworkCardEvents.length === 0 ? (
                     <div className="px-1 text-[11px] italic text-slate-500">Sin juegos asignados a este nodo.</div>
                   ) : (
                     <div className="space-y-2">
@@ -2559,60 +2528,39 @@ export default function AdminPage() {
                             <LabeledInput label="Tipo (auto)" value={event.rewardItemType || 'misc'} onChange={v => updateQuizEvent(index, { rewardItemType: v })} placeholder="weapon/armor/misc" />
                             <LabeledNumber label="Poder (auto)" value={event.rewardItemPower || 0} onChange={v => updateQuizEvent(index, { rewardItemPower: v })} />
                             <LabeledInput label="Texto si gana" value={event.winText || ''} onChange={v => updateQuizEvent(index, { winText: v })} placeholder="Certificacion aprobada..." />
+                            <div className="col-span-2 rounded border border-violet-700/30 bg-slate-950/40 p-2">
+                              <div className="mb-1 flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-violet-300">
+                                  Preguntas incluidas ({event.questionIds && event.questionIds.length > 0 ? event.questionIds.length : QUESTION_BANK.length} de {QUESTION_BANK.length})
+                                </span>
+                                {event.questionIds && event.questionIds.length > 0 && (
+                                  <button onClick={() => updateQuizEvent(index, { questionIds: [] })} className="rounded bg-violet-800/50 px-2 py-0.5 text-[10px] text-violet-200 hover:bg-violet-700">Usar todas</button>
+                                )}
+                              </div>
+                              <p className="mb-1 text-[10px] text-slate-500">Vacio = se usan todas las preguntas del banco. Desmarca las que no quieras incluir en este quiz.</p>
+                              <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                                {[1, 2, 3].map(lvl => (
+                                  <div key={lvl}>
+                                    <div className="text-[10px] font-bold text-slate-400">Nivel {lvl}</div>
+                                    {QUESTION_BANK.filter(q => q.level === lvl).map(q => (
+                                      <label key={q.id} className="flex items-start gap-1.5 py-0.5 text-[10px] text-slate-300">
+                                        <input
+                                          type="checkbox"
+                                          checked={!event.questionIds || event.questionIds.length === 0 ? true : event.questionIds.includes(q.id)}
+                                          onChange={() => toggleQuizQuestion(index, q.id)}
+                                          className="mt-0.5"
+                                        />
+                                        <span>{q.text}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                           {testingCard === `quiz-${index}` && (
                             <div className="border-t border-violet-800/30 p-2">
                               <TechQuizGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} onFinish={() => setTestingCard(null)} />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {selectedArchEvents.map(({ event, index }) => (
-                        <div key={`arch-${index}`} className="rounded border border-orange-800/40 bg-slate-900/80">
-                          <div className="flex items-center justify-between border-b border-orange-800/30 px-3 py-1.5">
-                            <span className="text-[11px] font-bold text-orange-300">🏗️ Arquitectura AWS</span>
-                            <div className="flex gap-1">
-                              <button onClick={() => setTestingCard(testingCard === `arch-${index}` ? null : `arch-${index}`)} className={`rounded px-2 py-0.5 text-[10px] font-bold transition ${testingCard === `arch-${index}` ? 'bg-orange-600 text-white' : 'bg-orange-900/60 text-orange-200 hover:bg-orange-700'}`}>{testingCard === `arch-${index}` ? '▲ Cerrar' : '▶ Probar'}</button>
-                              <button onClick={() => setConfig(prev => ({ ...prev, archEvents: (prev.archEvents || []).filter((_, i) => i !== index) }))} className="rounded bg-red-700/50 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-600">Eliminar</button>
-                            </div>
-                          </div>
-                          <div className="grid gap-2 p-2 md:grid-cols-2">
-                            <LabeledInput label="Clave" value={event.key || ''} onChange={v => updateArchEvent(index, { key: v })} placeholder="arch1" />
-                            <LabeledInput label="Titulo" value={event.title || ''} onChange={v => updateArchEvent(index, { title: v })} placeholder="Infra AWS" />
-                            <LabeledSelect label="Nivel" value={String(event.levelId ?? 0)} onChange={v => updateArchEvent(index, { levelId: Number(v) })} options={[
-                              { value: '0', label: 'Nivel 1 - Cuartel bajo ataque' },
-                              { value: '1', label: 'Nivel 2 - Inteligencia distribuida' },
-                              { value: '2', label: 'Nivel 3 - Alta disponibilidad' },
-                            ]} />
-                            <label className="space-y-1 text-xs font-semibold text-slate-300">
-                              <span>Premio (item)</span>
-                              <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateArchEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
-                              }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
-                                <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                <optgroup label="Pociones">
-                                  {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
-                                    <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
-                                  ))}
-                                </optgroup>
-                              </select>
-                            </label>
-                            <LabeledInput label="Tipo (auto)" value={event.rewardItemType || 'misc'} onChange={v => updateArchEvent(index, { rewardItemType: v })} placeholder="weapon/armor/misc" />
-                            <LabeledNumber label="Poder (auto)" value={event.rewardItemPower || 0} onChange={v => updateArchEvent(index, { rewardItemPower: v })} />
-                            <LabeledInput label="Texto si gana" value={event.winText || ''} onChange={v => updateArchEvent(index, { winText: v })} placeholder="Arquitectura aprobada..." />
-                          </div>
-                          {testingCard === `arch-${index}` && (
-                            <div className="border-t border-orange-800/30 p-2">
-                              <ArchitectureGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} onFinish={() => setTestingCard(null)} />
                             </div>
                           )}
                         </div>
@@ -3276,7 +3224,7 @@ export default function AdminPage() {
 
 // -- Mini-games playground ------------------------------------------------------
 
-type PlaygroundGame = 'runner' | 'memory' | 'quiz' | 'snake' | 'arch0' | 'arch1' | 'arch2' | 'minefield' | 'dice' | 'circuit0' | 'circuit1' | 'circuit2' | 'networkcard'
+type PlaygroundGame = 'runner' | 'memory' | 'quiz' | 'snake' | 'minefield' | 'dice' | 'circuit0' | 'circuit1' | 'circuit2' | 'networkcard'
 
 const MOCK_RUNNER_EVENT = {
   key: 'admin-test', sceneKey: 'test',
@@ -3313,10 +3261,6 @@ const MOCK_SNAKE_EVENT = {
   prompt: 'Dirige el paquete de datos y recoge nodos AWS.',
   targetScore: 50,
 }
-
-const MOCK_ARCH_EVENT_0 = { key: 'admin-test', sceneKey: 'test', levelId: 0 }
-const MOCK_ARCH_EVENT_1 = { key: 'admin-test', sceneKey: 'test', levelId: 1 }
-const MOCK_ARCH_EVENT_2 = { key: 'admin-test', sceneKey: 'test', levelId: 2 }
 
 const MOCK_MINEFIELD_EVENT = {
   key: 'admin-test', sceneKey: 'test',
@@ -3367,9 +3311,6 @@ const GAME_TABS: Array<{ id: PlaygroundGame; label: string; color: string; bg: s
   { id: 'memory', label: 'Memoria AWS',      color: 'text-cyan-300',   bg: 'bg-cyan-700/80',   border: 'border-cyan-500/40'   },
   { id: 'quiz',   label: 'AWS Quiz',         color: 'text-violet-300', bg: 'bg-violet-700/80', border: 'border-violet-500/40' },
   { id: 'snake',  label: 'Network Snake',    color: 'text-green-300',  bg: 'bg-green-700/80',  border: 'border-green-500/40'  },
-  { id: 'arch0',  label: 'Arquitectura N1',  color: 'text-sky-300',    bg: 'bg-sky-700/80',    border: 'border-sky-500/40'    },
-  { id: 'arch1',  label: 'Arquitectura N2',  color: 'text-sky-300',    bg: 'bg-sky-600/80',    border: 'border-sky-400/40'    },
-  { id: 'arch2',     label: 'Arquitectura N3',  color: 'text-sky-200',    bg: 'bg-sky-500/80',    border: 'border-sky-300/40'    },
   { id: 'minefield', label: 'Buscaminas',       color: 'text-rose-300',   bg: 'bg-rose-700/80',   border: 'border-rose-500/40'   },
   { id: 'dice',      label: 'Combate Dados',    color: 'text-amber-300',  bg: 'bg-amber-700/80',  border: 'border-amber-500/40'  },
   { id: 'circuit0',    label: 'Circuito N1',      color: 'text-emerald-300', bg: 'bg-emerald-700/80',  border: 'border-emerald-500/40'  },
@@ -3435,36 +3376,6 @@ function MiniGamesPlayground() {
             <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
           </div>
           <TechSnakeGame event={MOCK_SNAKE_EVENT} onFinish={() => {}} />
-        </div>
-      )}
-
-      {active === 'arch0' && (
-        <div className="rounded-xl border border-sky-500/30 bg-[#060d1c] p-2">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-[11px] font-black uppercase tracking-widest text-sky-300">&#x1F5FA; Arquitectura AWS - Nivel 1</span>
-            <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
-          </div>
-          <ArchitectureGame event={MOCK_ARCH_EVENT_0} onFinish={() => {}} />
-        </div>
-      )}
-
-      {active === 'arch1' && (
-        <div className="rounded-xl border border-sky-400/30 bg-[#060d1c] p-2">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-[11px] font-black uppercase tracking-widest text-sky-200">&#x1F5FA; Arquitectura AWS - Nivel 2</span>
-            <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
-          </div>
-          <ArchitectureGame event={MOCK_ARCH_EVENT_1} onFinish={() => {}} />
-        </div>
-      )}
-
-      {active === 'arch2' && (
-        <div className="rounded-xl border border-sky-300/30 bg-[#060d1c] p-2">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-[11px] font-black uppercase tracking-widest text-sky-100">&#x1F5FA; Arquitectura AWS - Nivel 3</span>
-            <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
-          </div>
-          <ArchitectureGame event={MOCK_ARCH_EVENT_2} onFinish={() => {}} />
         </div>
       )}
 

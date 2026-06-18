@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 export type QuizResult = 'win' | 'loss'
 
@@ -12,45 +12,74 @@ export interface TechQuizEventConfig {
   rewardItemPower?: number
   winText?: string
   loseText?: string
+  questionIds?: string[]
 }
 
-interface QuizQuestion {
+export interface QuizQuestion {
+  id: string
   text: string
   options: string[]
   correct: string
   level: 1 | 2 | 3
 }
 
-const QUESTION_BANK: QuizQuestion[] = [
+export const QUESTION_BANK: QuizQuestion[] = [
   // Nivel 1 — Servicios esenciales
-  { text: '¿Qué servicio AWS ejecuta código sin administrar servidores?', options: ['Lambda', 'EC2', 'RDS', 'ECS'], correct: 'Lambda', level: 1 },
-  { text: '¿Qué servicio de AWS almacena objetos a escala ilimitada?', options: ['S3', 'EBS', 'EFS', 'FSx'], correct: 'S3', level: 1 },
-  { text: '¿Qué significa "EC2"?', options: ['Elastic Compute Cloud', 'Enterprise Cloud Computing', 'Extended Container Cloud', 'Edge Control Center'], correct: 'Elastic Compute Cloud', level: 1 },
-  { text: '¿Cuál es la base de datos NoSQL totalmente gestionada de AWS?', options: ['DynamoDB', 'RDS', 'Aurora', 'Redshift'], correct: 'DynamoDB', level: 1 },
-  { text: '¿Qué servicio gestiona identidades y permisos en AWS?', options: ['IAM', 'Cognito', 'SSO', 'STS'], correct: 'IAM', level: 1 },
-  { text: '¿Qué servicio de base de datos relacional ofrece AWS?', options: ['RDS', 'DynamoDB', 'S3', 'ElastiCache'], correct: 'RDS', level: 1 },
-  { text: '¿Qué modelo de nube gestiona la infraestructura el proveedor?', options: ['PaaS', 'IaaS', 'SaaS', 'FaaS'], correct: 'PaaS', level: 1 },
-  { text: '¿Qué herramienta de línea de comandos se usa para interactuar con AWS?', options: ['AWS CLI', 'AWS SDK', 'AWS CDK', 'AWS SAM'], correct: 'AWS CLI', level: 1 },
+  { id: 'l1-01', text: '¿Qué servicio AWS ejecuta código sin administrar servidores?', options: ['Lambda', 'EC2', 'RDS', 'ECS'], correct: 'Lambda', level: 1 },
+  { id: 'l1-02', text: '¿Qué servicio de AWS almacena objetos a escala ilimitada?', options: ['S3', 'EBS', 'EFS', 'FSx'], correct: 'S3', level: 1 },
+  { id: 'l1-03', text: '¿Qué significa "EC2"?', options: ['Elastic Compute Cloud', 'Enterprise Cloud Computing', 'Extended Container Cloud', 'Edge Control Center'], correct: 'Elastic Compute Cloud', level: 1 },
+  { id: 'l1-04', text: '¿Cuál es la base de datos NoSQL totalmente gestionada de AWS?', options: ['DynamoDB', 'RDS', 'Aurora', 'Redshift'], correct: 'DynamoDB', level: 1 },
+  { id: 'l1-05', text: '¿Qué servicio gestiona identidades y permisos en AWS?', options: ['IAM', 'Cognito', 'SSO', 'STS'], correct: 'IAM', level: 1 },
+  { id: 'l1-06', text: '¿Qué servicio de base de datos relacional ofrece AWS?', options: ['RDS', 'DynamoDB', 'S3', 'ElastiCache'], correct: 'RDS', level: 1 },
+  { id: 'l1-07', text: '¿Qué modelo de nube gestiona la infraestructura el proveedor?', options: ['PaaS', 'IaaS', 'SaaS', 'FaaS'], correct: 'PaaS', level: 1 },
+  { id: 'l1-08', text: '¿Qué herramienta de línea de comandos se usa para interactuar con AWS?', options: ['AWS CLI', 'AWS SDK', 'AWS CDK', 'AWS SAM'], correct: 'AWS CLI', level: 1 },
+  { id: 'l1-09', text: '¿Qué servicio envía correos transaccionales y masivos?', options: ['SES', 'SQS', 'SNS', 'WorkMail'], correct: 'SES', level: 1 },
+  { id: 'l1-10', text: '¿Cómo se llama la consola web de administración de AWS?', options: ['AWS Management Console', 'AWS Portal', 'AWS Dashboard', 'AWS Hub'], correct: 'AWS Management Console', level: 1 },
+  { id: 'l1-11', text: '¿Qué servicio permite crear redes virtuales aisladas?', options: ['VPC', 'Subnet', 'IGW', 'NAT'], correct: 'VPC', level: 1 },
+  { id: 'l1-12', text: '¿Qué servicio de AWS gestiona contenedores Docker de forma simple?', options: ['ECS', 'EKS', 'Lambda', 'Batch'], correct: 'ECS', level: 1 },
+  { id: 'l1-13', text: '¿Qué unidad de almacenamiento usa S3 para guardar datos?', options: ['Objeto', 'Bloque', 'Archivo', 'Sector'], correct: 'Objeto', level: 1 },
+  { id: 'l1-14', text: '¿Qué servicio ofrece DNS administrado en AWS?', options: ['Route 53', 'CloudFront', 'VPC', 'Direct Connect'], correct: 'Route 53', level: 1 },
   // Nivel 2 — Servicios intermedios
-  { text: '¿Qué servicio distribuye contenido globalmente con baja latencia (CDN)?', options: ['CloudFront', 'CloudWatch', 'CloudTrail', 'Route 53'], correct: 'CloudFront', level: 2 },
-  { text: '¿Qué servicio gestiona y expone APIs REST e HTTP?', options: ['API Gateway', 'App Runner', 'AppSync', 'ELB'], correct: 'API Gateway', level: 2 },
-  { text: '¿Qué servicio de cola desacopla microservicios de forma asíncrona?', options: ['SQS', 'SNS', 'SES', 'MQ'], correct: 'SQS', level: 2 },
-  { text: '¿Qué servicio orquesta contenedores con Kubernetes?', options: ['EKS', 'ECS', 'ECR', 'Fargate'], correct: 'EKS', level: 2 },
-  { text: '¿Qué servicio ejecuta contenedores sin gestionar instancias EC2?', options: ['Fargate', 'ECS', 'EKS', 'Batch'], correct: 'Fargate', level: 2 },
-  { text: '¿Qué servicio envía notificaciones y mensajes a múltiples suscriptores?', options: ['SNS', 'SQS', 'SES', 'EventBridge'], correct: 'SNS', level: 2 },
-  { text: '¿Qué servicio enruta el tráfico DNS y permite failover?', options: ['Route 53', 'CloudFront', 'ALB', 'Global Accelerator'], correct: 'Route 53', level: 2 },
-  { text: '¿Qué servicio de caché en memoria reduce la carga en bases de datos?', options: ['ElastiCache', 'DAX', 'RDS', 'DynamoDB'], correct: 'ElastiCache', level: 2 },
-  { text: '¿Qué componente balancea el tráfico entre instancias EC2?', options: ['ELB', 'NAT Gateway', 'Internet Gateway', 'Route 53'], correct: 'ELB', level: 2 },
+  { id: 'l2-01', text: '¿Qué servicio distribuye contenido globalmente con baja latencia (CDN)?', options: ['CloudFront', 'CloudWatch', 'CloudTrail', 'Route 53'], correct: 'CloudFront', level: 2 },
+  { id: 'l2-02', text: '¿Qué servicio gestiona y expone APIs REST e HTTP?', options: ['API Gateway', 'App Runner', 'AppSync', 'ELB'], correct: 'API Gateway', level: 2 },
+  { id: 'l2-03', text: '¿Qué servicio de cola desacopla microservicios de forma asíncrona?', options: ['SQS', 'SNS', 'SES', 'MQ'], correct: 'SQS', level: 2 },
+  { id: 'l2-04', text: '¿Qué servicio orquesta contenedores con Kubernetes?', options: ['EKS', 'ECS', 'ECR', 'Fargate'], correct: 'EKS', level: 2 },
+  { id: 'l2-05', text: '¿Qué servicio ejecuta contenedores sin gestionar instancias EC2?', options: ['Fargate', 'ECS', 'EKS', 'Batch'], correct: 'Fargate', level: 2 },
+  { id: 'l2-06', text: '¿Qué servicio envía notificaciones y mensajes a múltiples suscriptores?', options: ['SNS', 'SQS', 'SES', 'EventBridge'], correct: 'SNS', level: 2 },
+  { id: 'l2-07', text: '¿Qué servicio enruta el tráfico DNS y permite failover?', options: ['Route 53', 'CloudFront', 'ALB', 'Global Accelerator'], correct: 'Route 53', level: 2 },
+  { id: 'l2-08', text: '¿Qué servicio de caché en memoria reduce la carga en bases de datos?', options: ['ElastiCache', 'DAX', 'RDS', 'DynamoDB'], correct: 'ElastiCache', level: 2 },
+  { id: 'l2-09', text: '¿Qué componente balancea el tráfico entre instancias EC2?', options: ['ELB', 'NAT Gateway', 'Internet Gateway', 'Route 53'], correct: 'ELB', level: 2 },
+  { id: 'l2-10', text: '¿Qué servicio construye flujos de trabajo serverless con estados?', options: ['Step Functions', 'EventBridge', 'SWF', 'Batch'], correct: 'Step Functions', level: 2 },
+  { id: 'l2-11', text: '¿Qué servicio centraliza el inicio de sesión en varias cuentas AWS?', options: ['IAM Identity Center', 'IAM', 'Cognito', 'Organizations'], correct: 'IAM Identity Center', level: 2 },
+  { id: 'l2-12', text: '¿Qué base de datos relacional escala como MySQL/PostgreSQL en AWS?', options: ['Aurora', 'RDS', 'DynamoDB', 'Redshift'], correct: 'Aurora', level: 2 },
+  { id: 'l2-13', text: '¿Qué servicio conecta tu centro de datos a AWS de forma privada y dedicada?', options: ['Direct Connect', 'VPN', 'Transit Gateway', 'PrivateLink'], correct: 'Direct Connect', level: 2 },
+  { id: 'l2-14', text: '¿Qué servicio gestiona múltiples cuentas bajo una organización?', options: ['Organizations', 'Control Tower', 'IAM', 'Service Catalog'], correct: 'Organizations', level: 2 },
+  { id: 'l2-15', text: '¿Qué servicio de archivos compartidos es compatible con NFS?', options: ['EFS', 'EBS', 'S3', 'FSx'], correct: 'EFS', level: 2 },
   // Nivel 3 — Avanzado
-  { text: '¿Qué servicio de AWS da acceso a modelos de IA generativa fundacionales?', options: ['Bedrock', 'SageMaker', 'Rekognition', 'Comprehend'], correct: 'Bedrock', level: 3 },
-  { text: '¿Cuántas zonas de disponibilidad mínimas requiere una región AWS?', options: ['3', '1', '2', '4'], correct: '3', level: 3 },
-  { text: '¿Qué servicio recoge métricas, logs y alarmas de recursos AWS?', options: ['CloudWatch', 'CloudTrail', 'Config', 'Inspector'], correct: 'CloudWatch', level: 3 },
-  { text: '¿Qué servicio permite Infraestructura como Código (IaC) en AWS?', options: ['CloudFormation', 'CodePipeline', 'CodeBuild', 'CodeCommit'], correct: 'CloudFormation', level: 3 },
-  { text: '¿Qué servicio procesa streams de datos en tiempo real?', options: ['Kinesis', 'Glue', 'EMR', 'Athena'], correct: 'Kinesis', level: 3 },
-  { text: '¿Qué servicio audita y registra todas las llamadas a la API de AWS?', options: ['CloudTrail', 'CloudWatch', 'Config', 'GuardDuty'], correct: 'CloudTrail', level: 3 },
-  { text: '¿Qué herramienta detecta amenazas con ML en cuentas AWS?', options: ['GuardDuty', 'Inspector', 'Macie', 'Shield'], correct: 'GuardDuty', level: 3 },
-  { text: '¿Qué servicio ejecuta queries SQL sobre datos en S3 sin servidor?', options: ['Athena', 'Redshift', 'Glue', 'EMR'], correct: 'Athena', level: 3 },
+  { id: 'l3-01', text: '¿Qué servicio de AWS da acceso a modelos de IA generativa fundacionales?', options: ['Bedrock', 'SageMaker', 'Rekognition', 'Comprehend'], correct: 'Bedrock', level: 3 },
+  { id: 'l3-02', text: '¿Cuántas zonas de disponibilidad mínimas requiere una región AWS?', options: ['3', '1', '2', '4'], correct: '3', level: 3 },
+  { id: 'l3-03', text: '¿Qué servicio recoge métricas, logs y alarmas de recursos AWS?', options: ['CloudWatch', 'CloudTrail', 'Config', 'Inspector'], correct: 'CloudWatch', level: 3 },
+  { id: 'l3-04', text: '¿Qué servicio permite Infraestructura como Código (IaC) en AWS?', options: ['CloudFormation', 'CodePipeline', 'CodeBuild', 'CodeCommit'], correct: 'CloudFormation', level: 3 },
+  { id: 'l3-05', text: '¿Qué servicio procesa streams de datos en tiempo real?', options: ['Kinesis', 'Glue', 'EMR', 'Athena'], correct: 'Kinesis', level: 3 },
+  { id: 'l3-06', text: '¿Qué servicio audita y registra todas las llamadas a la API de AWS?', options: ['CloudTrail', 'CloudWatch', 'Config', 'GuardDuty'], correct: 'CloudTrail', level: 3 },
+  { id: 'l3-07', text: '¿Qué herramienta detecta amenazas con ML en cuentas AWS?', options: ['GuardDuty', 'Inspector', 'Macie', 'Shield'], correct: 'GuardDuty', level: 3 },
+  { id: 'l3-08', text: '¿Qué servicio ejecuta queries SQL sobre datos en S3 sin servidor?', options: ['Athena', 'Redshift', 'Glue', 'EMR'], correct: 'Athena', level: 3 },
+  { id: 'l3-09', text: '¿Qué servicio cifra datos administrando llaves criptográficas?', options: ['KMS', 'Secrets Manager', 'ACM', 'CloudHSM'], correct: 'KMS', level: 3 },
+  { id: 'l3-10', text: '¿Qué servicio detecta vulnerabilidades en cargas de trabajo EC2?', options: ['Inspector', 'GuardDuty', 'Macie', 'Shield'], correct: 'Inspector', level: 3 },
+  { id: 'l3-11', text: '¿Qué servicio conecta muchas VPCs y redes on-premises a gran escala?', options: ['Transit Gateway', 'VPC Peering', 'Direct Connect', 'PrivateLink'], correct: 'Transit Gateway', level: 3 },
+  { id: 'l3-12', text: '¿Qué servicio identifica datos sensibles (PII) almacenados en S3?', options: ['Macie', 'Inspector', 'GuardDuty', 'Config'], correct: 'Macie', level: 3 },
+  { id: 'l3-13', text: '¿Qué servicio prepara y transforma datos para analítica (ETL)?', options: ['Glue', 'Athena', 'EMR', 'Kinesis'], correct: 'Glue', level: 3 },
+  { id: 'l3-14', text: '¿Qué servicio gestiona certificados SSL/TLS de forma administrada?', options: ['ACM', 'KMS', 'Secrets Manager', 'IAM'], correct: 'ACM', level: 3 },
 ]
+
+function getEventPool(event: TechQuizEventConfig): QuizQuestion[] {
+  if (event.questionIds && event.questionIds.length > 0) {
+    const ids = new Set(event.questionIds)
+    const filtered = QUESTION_BANK.filter(q => ids.has(q.id))
+    if (filtered.length > 0) return filtered
+  }
+  return QUESTION_BANK
+}
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
@@ -93,13 +122,18 @@ export function TechQuizGame({
   const timerDuration = level === 1 ? 8000 : level === 2 ? 6000 : 4000
   const timerStep = 100 / (timerDuration / 100)
 
+  const pool = useMemo(() => getEventPool(event), [event.questionIds])
+  const correctNeeded = Math.ceil(WIN_SCORE / 10)
+
   const pickQuestion = useCallback(() => {
-    const pool = shuffle(QUESTION_BANK.filter(q => q.level <= levelRef.current))
-    const q = pool[0]
+    let levelPool = pool.filter(q => q.level <= levelRef.current)
+    if (levelPool.length === 0) levelPool = pool
+    const list = shuffle(levelPool)
+    const q = list[0]
     setActive({ q, opts: shuffle(q.options) })
     setTimeLeft(100)
     setMessage('')
-  }, [])
+  }, [pool])
 
   const endTurn = useCallback((correct: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -170,15 +204,20 @@ export function TechQuizGame({
           />
         </div>
 
-        {/* Question */}
-        <div className="mb-3 flex min-h-[2.8rem] items-center justify-center rounded border border-cyan-800/30 bg-[#0e1c38] px-3 py-2 text-center text-[12px] font-bold leading-snug text-cyan-100">
-          {over
-            ? won
-              ? '🏆 ¡Eres un experto en AWS Cloud!'
-              : '💀 Sin conexión — Vidas agotadas'
-            : started && active
-              ? active.q.text
-              : (event.prompt || '¿Cuánto sabes de AWS? Demuéstralo con preguntas de servicios cloud.')}
+        {/* Question / Instructions */}
+        <div className="mb-3 flex min-h-[2.8rem] flex-col items-center justify-center gap-1 rounded border border-cyan-800/30 bg-[#0e1c38] px-3 py-2 text-center leading-snug text-cyan-100">
+          {over ? (
+            <span className="text-[12px] font-bold">{won ? '🏆 ¡Eres un experto en AWS Cloud!' : '💀 Sin conexión — Vidas agotadas'}</span>
+          ) : started && active ? (
+            <span className="text-[12px] font-bold">{active.q.text}</span>
+          ) : (
+            <>
+              <span className="text-[12px] font-bold">{event.prompt || '¿Cuánto sabes de AWS? Demuéstralo con preguntas de servicios cloud.'}</span>
+              <span className="text-[10px] font-normal text-cyan-300/80">
+                📋 {pool.length} preguntas disponibles · ✅ {correctNeeded} correctas para ganar · ❤️ 3 vidas (cada error resta una) · la dificultad sube según tu puntaje
+              </span>
+            </>
+          )}
         </div>
 
         {/* Options */}
