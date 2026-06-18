@@ -1971,6 +1971,39 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {message && (
+          <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow ${
+            message.toLowerCase().includes('error') || message.toLowerCase().includes('problema')
+              ? 'border-rose-500/40 bg-rose-950/60 text-rose-200'
+              : 'border-emerald-500/30 bg-emerald-950/50 text-emerald-200'
+          }`}>
+            <span className="mt-0.5 shrink-0 text-base">
+              {message.toLowerCase().includes('error') || message.toLowerCase().includes('problema') ? '⚠️' : '✅'}
+            </span>
+            <span>{message}</span>
+          </div>
+        )}
+
+        <FlowDiagram
+          config={config}
+          selectedSceneKey={selectedSceneKey}
+          onSelectScene={setSelectedSceneKey}
+          onAddDecision={addDecisionFromNode}
+          onAddEnemy={addEnemyToNode}
+          onAddMemory={addMemoryEventToNode}
+          onAddItem={addItemToNode}
+          onDropNode={createNodeFromFlow}
+          onDropDecision={createDecisionFromFlow}
+          onMoveScene={moveSceneInFlow}
+          onDeleteScene={deleteSceneFromFlow}
+          onConnectScenes={connectScenesInFlow}
+          onDeleteDecision={deleteDecisionFromFlow}
+          onDeleteEnemy={deleteEnemyFromFlow}
+          onDeleteMemory={deleteMemoryEventFromFlow}
+          onDeleteItem={deleteItemFromFlow}
+          onAutoArrange={autoArrangeFlow}
+        />
+
         {/* ── Laboratorio de Circuitos: niveles personalizados ── */}
         <div className="rounded-xl border border-emerald-800/30 bg-slate-900/80 px-5 py-4 shadow-lg">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -2036,10 +2069,14 @@ export default function AdminPage() {
                       <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Slots ({level.slots.length})</span>
                       <button onClick={() => addSlotToCircuitLevel(index)} className="rounded bg-emerald-800/60 px-2 py-0.5 text-[10px] font-bold text-emerald-200 hover:bg-emerald-700">+ Añadir slot</button>
                     </div>
+                    <p className="mb-2 text-[10px] text-slate-500">
+                      <strong>Columna</strong> define el orden de izquierda a derecha. <strong>Fila</strong> 1 = camino principal; usa 2, 3... para crear ramas en paralelo
+                      que cuelgan debajo de la fila 1 en esa misma columna (ej. EC2 en columna 1 fila 1, y Security Group en columna 1 fila 2).
+                    </p>
                     {level.slots.length === 0 && <p className="text-xs italic text-slate-500">Sin slots. Añade al menos uno.</p>}
                     <div className="space-y-1.5">
                       {level.slots.map((slot, slotIndex) => (
-                        <div key={slot.id} className="grid grid-cols-[1fr_1fr_auto_auto] items-end gap-1.5 rounded bg-slate-900/70 p-1.5">
+                        <div key={slot.id} className="grid grid-cols-[1fr_1fr_70px_70px_auto_auto] items-end gap-1.5 rounded bg-slate-900/70 p-1.5">
                           <LabeledInput label="Etiqueta" value={slot.label} onChange={v => updateCircuitLevelSlot(index, slotIndex, { label: v })} placeholder="Firewall web" />
                           <LabeledSelect
                             label="Componente correcto"
@@ -2047,6 +2084,8 @@ export default function AdminPage() {
                             onChange={v => updateCircuitLevelSlot(index, slotIndex, { answer: v as CompId })}
                             options={(Object.keys(COMP_DEFS) as CompId[]).map(id => ({ value: id, label: COMP_DEFS[id].label }))}
                           />
+                          <LabeledNumber label="Columna" value={slot.col} onChange={v => updateCircuitLevelSlot(index, slotIndex, { col: Math.max(1, Math.round(v)) })} />
+                          <LabeledNumber label="Fila" value={slot.row} onChange={v => updateCircuitLevelSlot(index, slotIndex, { row: Math.max(1, Math.round(v)) })} />
                           <label className="flex items-center gap-1 pb-2 text-[10px] font-semibold text-slate-300">
                             <input type="checkbox" checked={!!slot.insideVpc} onChange={e => updateCircuitLevelSlot(index, slotIndex, { insideVpc: e.target.checked })} />
                             Dentro de VPC
@@ -2100,39 +2139,6 @@ export default function AdminPage() {
             })}
           </div>
         </div>
-
-        {message && (
-          <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow ${
-            message.toLowerCase().includes('error') || message.toLowerCase().includes('problema')
-              ? 'border-rose-500/40 bg-rose-950/60 text-rose-200'
-              : 'border-emerald-500/30 bg-emerald-950/50 text-emerald-200'
-          }`}>
-            <span className="mt-0.5 shrink-0 text-base">
-              {message.toLowerCase().includes('error') || message.toLowerCase().includes('problema') ? '⚠️' : '✅'}
-            </span>
-            <span>{message}</span>
-          </div>
-        )}
-
-        <FlowDiagram
-          config={config}
-          selectedSceneKey={selectedSceneKey}
-          onSelectScene={setSelectedSceneKey}
-          onAddDecision={addDecisionFromNode}
-          onAddEnemy={addEnemyToNode}
-          onAddMemory={addMemoryEventToNode}
-          onAddItem={addItemToNode}
-          onDropNode={createNodeFromFlow}
-          onDropDecision={createDecisionFromFlow}
-          onMoveScene={moveSceneInFlow}
-          onDeleteScene={deleteSceneFromFlow}
-          onConnectScenes={connectScenesInFlow}
-          onDeleteDecision={deleteDecisionFromFlow}
-          onDeleteEnemy={deleteEnemyFromFlow}
-          onDeleteMemory={deleteMemoryEventFromFlow}
-          onDeleteItem={deleteItemFromFlow}
-          onAutoArrange={autoArrangeFlow}
-        />
 
         {selectedScene && (
           <section className="rounded-xl border border-cyan-400/25 bg-slate-900/90 p-5 shadow-lg">

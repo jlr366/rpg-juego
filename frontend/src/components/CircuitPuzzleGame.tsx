@@ -15,6 +15,20 @@ import iconFW     from '../assets/Architecture-Service-Icons_07312025/Arch_Secur
 import iconWAF    from '../assets/Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/64/Arch_AWS-WAF_64.png'
 import iconIAM    from '../assets/Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/64/Arch_AWS-Identity-and-Access-Management_64.png'
 import iconLambda from '../assets/Architecture-Service-Icons_07312025/Arch_Compute/64/Arch_AWS-Lambda_64.png'
+import iconEBS    from '../assets/Architecture-Service-Icons_07312025/Arch_Storage/64/Arch_Amazon-Elastic-Block-Store_64.png'
+import iconEFS    from '../assets/Architecture-Service-Icons_07312025/Arch_Storage/64/Arch_Amazon-EFS_64.png'
+import iconAurora from '../assets/Architecture-Service-Icons_07312025/Arch_Database/64/Arch_Amazon-Aurora_64.png'
+import iconRoute53 from '../assets/Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/64/Arch_Amazon-Route-53_64.png'
+import iconDirectConnect from '../assets/Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/64/Arch_AWS-Direct-Connect_64.png'
+import iconApiGateway from '../assets/Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/64/Arch_Amazon-API-Gateway_64.png'
+import iconTransitGateway from '../assets/Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/64/Arch_AWS-Transit-Gateway_64.png'
+import iconVPN    from '../assets/Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/64/Arch_AWS-Site-to-Site-VPN_64.png'
+import iconAthena from '../assets/Architecture-Service-Icons_07312025/Arch_Analytics/64/Arch_Amazon-Athena_64.png'
+import iconCloudWatch from '../assets/Architecture-Service-Icons_07312025/Arch_Management-Governance/64/Arch_Amazon-CloudWatch_64.png'
+import iconCloudTrail from '../assets/Architecture-Service-Icons_07312025/Arch_Management-Governance/64/Arch_AWS-CloudTrail_64.png'
+import iconSNS    from '../assets/Architecture-Service-Icons_07312025/Arch_App-Integration/64/Arch_Amazon-Simple-Notification-Service_64.png'
+import iconSQS    from '../assets/Architecture-Service-Icons_07312025/Arch_App-Integration/64/Arch_Amazon-Simple-Queue-Service_64.png'
+import iconKMS    from '../assets/Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/64/Arch_AWS-Key-Management-Service_64.png'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,7 +59,10 @@ interface Props {
 
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
-export type CompId = 'waf' | 'vpc' | 'sg' | 'ec2' | 's3' | 'elb' | 'rds' | 'dynamo' | 'fw' | 'cf' | 'iam' | 'lambda'
+export type CompId =
+  | 'waf' | 'vpc' | 'sg' | 'ec2' | 's3' | 'elb' | 'rds' | 'dynamo' | 'fw' | 'cf' | 'iam' | 'lambda'
+  | 'ebs' | 'efs' | 'aurora' | 'route53' | 'directconnect' | 'apigateway' | 'transitgateway' | 'vpn'
+  | 'athena' | 'cloudwatch' | 'cloudtrail' | 'sns' | 'sqs' | 'kms'
 interface CompDef { label: string; color: string; img?: string; badge?: string }
 
 export const COMP_DEFS: Record<CompId, CompDef> = {
@@ -61,6 +78,20 @@ export const COMP_DEFS: Record<CompId, CompDef> = {
   cf:     { label: 'CloudFront',       color: '#8b5cf6', img: iconCF     },
   iam:    { label: 'IAM',              color: '#ef4444', img: iconIAM    },
   lambda: { label: 'Lambda',           color: '#a855f7', img: iconLambda },
+  ebs:            { label: 'EBS',             color: '#84cc16', img: iconEBS            },
+  efs:            { label: 'EFS',             color: '#84cc16', img: iconEFS            },
+  aurora:         { label: 'Aurora',          color: '#3b82f6', img: iconAurora         },
+  route53:        { label: 'Route 53',        color: '#8b5cf6', img: iconRoute53        },
+  directconnect:  { label: 'Direct Connect',  color: '#8b5cf6', img: iconDirectConnect  },
+  apigateway:     { label: 'API Gateway',     color: '#8b5cf6', img: iconApiGateway     },
+  transitgateway: { label: 'Transit Gateway', color: '#8b5cf6', img: iconTransitGateway },
+  vpn:            { label: 'VPN',             color: '#8b5cf6', img: iconVPN            },
+  athena:         { label: 'Athena',          color: '#06b6d4', img: iconAthena         },
+  cloudwatch:     { label: 'CloudWatch',      color: '#ec4899', img: iconCloudWatch     },
+  cloudtrail:     { label: 'CloudTrail',      color: '#ec4899', img: iconCloudTrail     },
+  sns:            { label: 'SNS',             color: '#a855f7', img: iconSNS            },
+  sqs:            { label: 'SQS',             color: '#a855f7', img: iconSQS            },
+  kms:            { label: 'KMS',             color: '#ef4444', img: iconKMS            },
 }
 
 // ─── Levels ───────────────────────────────────────────────────────────────────
@@ -223,6 +254,26 @@ function Arrow({ lit, animated, delay = 0 }: { lit: boolean; animated: boolean; 
   )
 }
 
+// ─── VerticalArrow (connects a slot to a parallel/branch slot stacked below it) ──
+
+function VerticalArrow({ lit }: { lit: boolean }) {
+  return (
+    <div className="relative flex justify-center" style={{ height: 24 }}>
+      <div className={`w-0.5 h-full transition-all duration-500 ${lit ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+      <div className={`absolute bottom-0 border-x-[5px] border-x-transparent border-t-[7px] transition-all duration-500
+        ${lit ? 'border-t-emerald-400' : 'border-t-slate-600'}`} />
+    </div>
+  )
+}
+
+// ─── Column grouping: slots that share the same `col` stack vertically by `row` ──
+// row 1 sits on the main horizontal chain; row 2+ are parallel branches below it.
+
+function groupSlotsByColumn(slots: SlotDef[]): SlotDef[][] {
+  const cols = Array.from(new Set(slots.map(s => s.col))).sort((a, b) => a - b)
+  return cols.map(col => slots.filter(s => s.col === col).sort((a, b) => a.row - b.row))
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export const CircuitPuzzleGame: React.FC<Props> = ({
@@ -257,6 +308,9 @@ export const CircuitPuzzleGame: React.FC<Props> = ({
   const usedInPanel  = (id: CompId) => Object.values(placed).some(v => v === id)
   const vpcSlots     = level.slots.filter(s => s.insideVpc)
   const nonVpcSlots  = level.slots.filter(s => !s.insideVpc)
+  // Slots sharing the same `col` stack vertically (row 1 = main chain, row 2+ = parallel branch below)
+  const nonVpcColumns = groupSlotsByColumn(nonVpcSlots)
+  const vpcColumns     = groupSlotsByColumn(vpcSlots)
 
   const handleDragStart = (id: CompId) => setDragging(id)
   const handleDragOver  = (e: React.DragEvent, slotId: string) => { e.preventDefault(); setDragOver(slotId) }
@@ -323,6 +377,22 @@ export const CircuitPuzzleGame: React.FC<Props> = ({
   useEffect(() => () => { if (animTimerRef.current) clearTimeout(animTimerRef.current) }, [])
 
   const anyAnimating = phase === 'lighting'
+
+  const renderSlotComp = (slot: SlotDef) => (
+    <SlotComp
+      key={slot.id}
+      slot={slot}
+      placed={placed[slot.id]}
+      lit={!!lit[slot.id]}
+      pulsing={phase === 'lighting' && !!lit[slot.id]}
+      sparking={executing && wrongSlotIds.has(slot.id)}
+      dragOver={dragOver === slot.id}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    />
+  )
+  const isSlotLit = (slot: SlotDef) => (!!placed[slot.id] && !wrongSlotIds.has(slot.id)) || phase === 'lighting'
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-emerald-400/20 bg-[#060d0a]/95 p-4 shadow-[0_0_40px_rgba(16,185,129,0.1)]">
@@ -417,27 +487,28 @@ export const CircuitPuzzleGame: React.FC<Props> = ({
             </div>
             <Arrow lit={nonVpcSlots.length > 0 || phase === 'lighting'} animated={false} />
 
-            {/* Non-VPC slots */}
-            {nonVpcSlots.map((slot, idx) => (
-              <React.Fragment key={slot.id}>
-                <SlotComp
-                  slot={slot}
-                  placed={placed[slot.id]}
-                  lit={!!lit[slot.id]}
-                  pulsing={phase === 'lighting' && !!lit[slot.id]}
-                  sparking={executing && wrongSlotIds.has(slot.id)}
-                  dragOver={dragOver === slot.id}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                />
-                <Arrow
-                  lit={(!!placed[slot.id] && !wrongSlotIds.has(slot.id)) || phase === 'lighting'}
-                  animated={phase === 'lighting' && !!lit[slot.id]}
-                  delay={idx * 0.4}
-                />
-              </React.Fragment>
-            ))}
+            {/* Non-VPC slots — grouped by column; row 2+ stacks below row 1 as a parallel branch */}
+            {nonVpcColumns.map((group, colIdx) => {
+              const [mainSlot, ...branchSlots] = group
+              return (
+                <React.Fragment key={`col-${mainSlot.col}-${mainSlot.id}`}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    {renderSlotComp(mainSlot)}
+                    {branchSlots.map(branch => (
+                      <React.Fragment key={branch.id}>
+                        <VerticalArrow lit={isSlotLit(mainSlot)} />
+                        {renderSlotComp(branch)}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <Arrow
+                    lit={isSlotLit(mainSlot)}
+                    animated={phase === 'lighting' && !!lit[mainSlot.id]}
+                    delay={colIdx * 0.4}
+                  />
+                </React.Fragment>
+              )
+            })}
 
             {/* VPC container */}
             {vpcSlots.length > 0 && (
@@ -449,28 +520,29 @@ export const CircuitPuzzleGame: React.FC<Props> = ({
                   {COMP_DEFS.vpc.img && <img src={COMP_DEFS.vpc.img} className="h-4 w-4" />}
                   <span className="text-[11px] font-bold text-emerald-300">VPC</span>
                 </div>
-                {vpcSlots.map((slot, idx) => (
-                  <React.Fragment key={slot.id}>
-                    <SlotComp
-                      slot={slot}
-                      placed={placed[slot.id]}
-                      lit={!!lit[slot.id]}
-                      pulsing={phase === 'lighting' && !!lit[slot.id]}
-                      sparking={executing && wrongSlotIds.has(slot.id)}
-                      dragOver={dragOver === slot.id}
-                      onDrop={handleDrop}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                    />
-                    {idx < vpcSlots.length - 1 && (
-                      <Arrow
-                        lit={(!!placed[slot.id] && !wrongSlotIds.has(slot.id)) || phase === 'lighting'}
-                        animated={anyAnimating}
-                        delay={(nonVpcSlots.length + idx + 1) * 0.4}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
+                {vpcColumns.map((group, colIdx) => {
+                  const [mainSlot, ...branchSlots] = group
+                  return (
+                    <React.Fragment key={`vpccol-${mainSlot.col}-${mainSlot.id}`}>
+                      <div className="flex flex-col items-center gap-1.5">
+                        {renderSlotComp(mainSlot)}
+                        {branchSlots.map(branch => (
+                          <React.Fragment key={branch.id}>
+                            <VerticalArrow lit={isSlotLit(mainSlot)} />
+                            {renderSlotComp(branch)}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      {colIdx < vpcColumns.length - 1 && (
+                        <Arrow
+                          lit={isSlotLit(mainSlot)}
+                          animated={anyAnimating}
+                          delay={(nonVpcColumns.length + colIdx + 1) * 0.4}
+                        />
+                      )}
+                    </React.Fragment>
+                  )
+                })}
               </div>
             )}
           </div>
