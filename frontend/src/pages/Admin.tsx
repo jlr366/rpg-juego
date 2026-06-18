@@ -2676,7 +2676,7 @@ export default function AdminPage() {
                             <LabeledInput label="Clave" value={event.key || ''} onChange={v => updateMinefieldEvent(index, { key: v })} placeholder="mf1" />
                             <LabeledInput label="Titulo" value={event.title || ''} onChange={v => updateMinefieldEvent(index, { title: v })} placeholder="Androide hostil" />
                             <LabeledInput label="Prompt" value={event.prompt || ''} onChange={v => updateMinefieldEvent(index, { prompt: v })} placeholder="Encuentra los puntos débiles..." />
-                            <LabeledInput label="URL imagen enemigo" value={event.enemyImageUrl || ''} onChange={v => updateMinefieldEvent(index, { enemyImageUrl: v })} placeholder="https://..." />
+                            <LabeledFileInput label="Imagen enemigo" value={event.enemyImageUrl || ''} onChange={v => updateMinefieldEvent(index, { enemyImageUrl: v })} placeholder="https://... o sube un archivo" accept="image/*" buttonText="Buscar" loadedText="Imagen cargada desde este PC." />
                             <LabeledNumber label="HP enemigo" value={event.enemyHP ?? 60} onChange={v => updateMinefieldEvent(index, { enemyHP: v })} />
                             <LabeledNumber label="Ataque enemigo" value={event.enemyAttack ?? 15} onChange={v => updateMinefieldEvent(index, { enemyAttack: v })} />
                             <LabeledNumber label="Celdas cerebro (de 16)" value={event.brainCount ?? 6} onChange={v => updateMinefieldEvent(index, { brainCount: Math.min(15, Math.max(1, v)) })} />
