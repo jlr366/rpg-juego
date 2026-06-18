@@ -124,6 +124,7 @@ interface RunnerEventConfig {
   targetScore?: number
   rewardItemName?: string
   rewardItemType?: string
+  rewardItemSlot?: string
   rewardItemPower?: number
   winText?: string
   loseText?: string
@@ -370,7 +371,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const [activeNetworkCardEvent, setActiveNetworkCardEvent] = useState<NetworkCardEventConfig | null>(null)
   const [resolvedNetworkCardEvents, setResolvedNetworkCardEvents] = useState<Record<string, boolean>>({})
   const [resolvedRunnerEvents, setResolvedRunnerEvents] = useState<Record<string, boolean>>({})
-  const [pendingGameReward, setPendingGameReward] = useState<{ name: string; type: string; power: number; rarity?: string; description?: string } | null>(null)
+  const [pendingGameReward, setPendingGameReward] = useState<{ name: string; type: string; slot?: string; power: number; rarity?: string; description?: string } | null>(null)
   const [gameResultPending, setGameResultPending] = useState(false)
   const [lastPenaltyHP, setLastPenaltyHP] = useState(0)
   const specialPotionEndRef = useRef<number>(0)
@@ -736,11 +737,12 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setEventResultText(text || '')
 
     if (effect === 'reward_item' && itemName) {
+      const visual = resolveEquipVisual(itemType || 'misc')
       acquireItem({
         id: generateId(),
         name: itemName,
-        type: (itemType || 'misc') as Item['type'],
-        slot: typeToSlot(itemType || 'misc'),
+        type: visual.type,
+        slot: visual.slot,
         power: Number(itemPower) || 0,
         rarity: Number(itemPower) >= 10 ? 'epic' : Number(itemPower) >= 5 ? 'rare' : 'common',
         description: text || `Premio recibido en ${event.title}`,
@@ -808,10 +810,10 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setGameResultPending(true)
   }
 
-  const applyGameReward = (name: string, type: string, power: number, winText: string) => {
+  const applyGameReward = (name: string, type: string, power: number, winText: string, slot?: string) => {
     playOneShot((storyConfig as any)?.victorySound)
     setEventResultText(winText)
-    setPendingGameReward({ name, type, power, rarity: power >= 10 ? 'epic' : power >= 5 ? 'rare' : 'common', description: winText })
+    setPendingGameReward({ name, type, slot, power, rarity: power >= 10 ? 'epic' : power >= 5 ? 'rare' : 'common', description: winText })
   }
 
   const applyGameLoss = (loseText: string) => {
@@ -823,12 +825,17 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setGameResultPending(true)
   }
 
-  const typeToSlot = (type: string): Item['slot'] | undefined => {
-    if (type === 'weapon')    return 'weapon'
-    if (type === 'armor')     return 'chest'
-    if (type === 'ring')      return 'ring'
-    if (type === 'accessory') return 'ring'
-    return undefined
+  // Los unicos 6 slots de equipamiento reales (ver EquipmentPanel.tsx -> slots).
+  // 'armor'/'accessory' son valores legados de configuraciones guardadas antes
+  // de unificar los tipos de premio; se mapean a un slot razonable por compatibilidad.
+  const resolveEquipVisual = (raw: string): { type: Item['type']; slot: Item['slot'] | undefined } => {
+    if (raw === 'head' || raw === 'chest' || raw === 'legs' || raw === 'boots') return { type: 'armor', slot: raw }
+    if (raw === 'ring')      return { type: 'ring', slot: 'ring' }
+    if (raw === 'weapon')    return { type: 'weapon', slot: 'weapon' }
+    if (raw === 'potion')    return { type: 'potion', slot: undefined }
+    if (raw === 'armor')     return { type: 'armor', slot: 'chest' }
+    if (raw === 'accessory') return { type: 'ring', slot: 'ring' }
+    return { type: 'misc', slot: undefined }
   }
 
   const finishRunnerEvent = (event: RunnerEventConfig, result: RunnerResult, _wageredItemId?: string) => {
@@ -836,7 +843,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedRunnerEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
     if (result === 'win' || result === 'p1_wins') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 0, event.winText || '¡Superaste el desafío runner!')
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 0, event.winText || '¡Superaste el desafío runner!', event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || '¡Superaste el desafío runner!')
         setGameResultPending(true)
@@ -851,7 +858,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedRunnerEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
     if (result === 'win') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 3, event.winText || '¡Dominaste el AWS Quiz!')
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 3, event.winText || '¡Dominaste el AWS Quiz!', event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || '¡Dominaste el AWS Quiz!')
         setGameResultPending(true)
@@ -866,7 +873,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedRunnerEvents(prev => ({ ...prev, [`${event.sceneKey}:${event.key}`]: true }))
     if (result === 'win') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 3, event.winText || '¡Dominaste la red!')
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 3, event.winText || '¡Dominaste la red!', event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || '¡Dominaste la red!')
         setGameResultPending(true)
@@ -882,7 +889,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedMinefieldEvents(prev => ({ ...prev, [evKey]: true }))
     if (result === 'win') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Destruiste al androide!')
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Destruiste al androide!', event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || '¡Destruiste al androide!')
         setGameResultPending(true)
@@ -898,7 +905,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedDiceCombatEvents(prev => ({ ...prev, [evKey]: true }))
     if (result === 'win') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || `¡Derrotaste a ${event.enemyName || 'el enemigo'}!`)
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || `¡Derrotaste a ${event.enemyName || 'el enemigo'}!`, event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || `¡Derrotaste a ${event.enemyName || 'el enemigo'}!`)
         setGameResultPending(true)
@@ -914,7 +921,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedCircuitPuzzleEvents(prev => ({ ...prev, [evKey]: true }))
     if (result === 'win') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Circuito completado!')
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Circuito completado!', event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || '¡Circuito completado!')
         setGameResultPending(true)
@@ -930,7 +937,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setResolvedNetworkCardEvents(prev => ({ ...prev, [evKey]: true }))
     if (result === 'win') {
       if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Dominaste la seguridad de red!')
+        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || '¡Dominaste la seguridad de red!', event.rewardItemSlot)
       } else {
         setEventResultText(event.winText || '¡Dominaste la seguridad de red!')
         setGameResultPending(true)
@@ -1832,7 +1839,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
           <div className="mb-3 text-xs leading-5 text-emerald-100/80">{eventResultText}</div>
           <div className="mb-3 flex items-center gap-3 rounded border border-emerald-700/50 bg-[#0a1a0e] p-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-emerald-400/70 bg-emerald-900/60 text-2xl">
-              {pendingGameReward.type === 'weapon' ? '⚔️' : pendingGameReward.type === 'armor' ? '🛡️' : pendingGameReward.type === 'potion' ? '🧪' : '💍'}
+              {pendingGameReward.type === 'weapon' ? '⚔️' : pendingGameReward.type === 'potion' ? '🧪' : pendingGameReward.type === 'ring' || pendingGameReward.type === 'accessory' ? '💍' : '🛡️'}
             </div>
             <div>
               <p className="font-bold text-emerald-200">{pendingGameReward.name}</p>
@@ -1848,11 +1855,14 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
               setPendingGameReward(null)
               setGameResultPending(false)
               setEventResultText('')
+              const visual = reward.slot
+                ? { type: reward.type as Item['type'], slot: reward.slot as Item['slot'] }
+                : resolveEquipVisual(reward.type)
               await acquireItem({
                 id: generateId(),
                 name: reward.name,
-                type: reward.type as Item['type'],
-                slot: typeToSlot(reward.type),
+                type: visual.type,
+                slot: visual.slot,
                 power: reward.power,
                 rarity: (reward.rarity || 'common') as Item['rarity'],
                 description: reward.description || '',

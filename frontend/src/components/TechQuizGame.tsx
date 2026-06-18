@@ -9,6 +9,7 @@ export interface TechQuizEventConfig {
   prompt?: string
   rewardItemName?: string
   rewardItemType?: string
+  rewardItemSlot?: string
   rewardItemPower?: number
   winText?: string
   loseText?: string

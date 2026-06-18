@@ -11,6 +11,7 @@ export interface DiceCombatEventConfig {
   weakWeapon?: string
   rewardItemName?: string
   rewardItemType?: string
+  rewardItemSlot?: string
   rewardItemPower?: number
   winText?: string
   loseText?: string

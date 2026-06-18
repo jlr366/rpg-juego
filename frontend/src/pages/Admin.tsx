@@ -126,6 +126,7 @@ interface RunnerEventConfig {
   targetScore: number
   rewardItemName: string
   rewardItemType: string
+  rewardItemSlot?: string
   rewardItemPower: number
   winText: string
   loseText: string
@@ -144,6 +145,7 @@ interface QuizEventConfig {
   prompt?: string
   rewardItemName?: string
   rewardItemType?: string
+  rewardItemSlot?: string
   rewardItemPower?: number
   winText?: string
   loseText?: string
@@ -158,6 +160,7 @@ interface SnakeEventConfig {
   targetScore?: number
   rewardItemName?: string
   rewardItemType?: string
+  rewardItemSlot?: string
   rewardItemPower?: number
   winText?: string
   loseText?: string
@@ -174,6 +177,7 @@ interface MinefieldEventConfig {
   brainCount?: number
   rewardItemName?: string
   rewardItemType?: string
+  rewardItemSlot?: string
   rewardItemPower?: number
   winText?: string
   loseText?: string
@@ -303,28 +307,32 @@ const POTION_PRESETS: NodeItemConfig[] = [
 ]
 
 // Mapeo de tipo visual → type+slot real (sin mostrar slot al usuario)
+// Los unicos 6 slots de equipamiento que existen visualmente en el personaje
+// (ver EquipmentPanel.tsx -> slots). Cualquier otro "tipo" es ficticio y no se
+// renderiza nunca en el personaje.
+const EQUIP_VISUAL_OPTIONS = [
+  { value: 'head',   label: 'Casco' },
+  { value: 'chest',  label: 'Pechera' },
+  { value: 'ring',   label: 'Antebrazos' },
+  { value: 'legs',   label: 'Botas' },
+  { value: 'boots',  label: 'Mochila' },
+  { value: 'weapon', label: 'Brazos Robóticos' },
+]
+
 const VISUAL_TYPE_MAP: Record<string, { type: string; slot: string }> = {
-  weapon:      { type: 'weapon', slot: 'weapon'    },
-  armor_head:  { type: 'armor',  slot: 'head'      },
-  armor_chest: { type: 'armor',  slot: 'chest'     },
-  armor_legs:  { type: 'armor',  slot: 'legs'      },
-  armor_boots: { type: 'armor',  slot: 'boots'     },
-  ring:        { type: 'ring',   slot: 'ring'      },
-  accessory:   { type: 'misc',   slot: 'accessory' },
-  misc:        { type: 'misc',   slot: ''          },
+  head:   { type: 'armor',  slot: 'head'   },
+  chest:  { type: 'armor',  slot: 'chest'  },
+  ring:   { type: 'ring',   slot: 'ring'   },
+  legs:   { type: 'armor',  slot: 'legs'   },
+  boots:  { type: 'armor',  slot: 'boots'  },
+  weapon: { type: 'weapon', slot: 'weapon' },
 }
 
 function getVisualType(type: string, slot: string): string {
+  if (slot === 'head' || slot === 'chest' || slot === 'ring' || slot === 'legs' || slot === 'boots' || slot === 'weapon') return slot
   if (type === 'weapon') return 'weapon'
-  if (type === 'armor' || type === 'armor_head' || type === 'armor_chest' || type === 'armor_legs' || type === 'armor_boots') {
-    if (slot === 'head') return 'armor_head'
-    if (slot === 'legs') return 'armor_legs'
-    if (slot === 'boots') return 'armor_boots'
-    return 'armor_chest'
-  }
   if (type === 'ring') return 'ring'
-  if (slot === 'accessory') return 'accessory'
-  return 'misc'
+  return 'chest'
 }
 
 const blankStoryEvent: StoryChoiceEventConfig = {
@@ -2233,18 +2241,9 @@ export default function AdminPage() {
                         <button onClick={() => deleteItemFromFlow(index)} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-red-600/80 text-[10px] font-bold text-white hover:bg-red-600" title="Eliminar">✕</button>
                         <LabeledInput label="Nombre" value={item.name} onChange={value => updateNodeItem(index, { name: value })} placeholder="Pistola oxidada" />
                         <LabeledSelect label="Tipo de equipo" value={getVisualType(item.type, item.slot)} onChange={v => {
-                          const m = VISUAL_TYPE_MAP[v] || { type: 'misc', slot: '' }
+                          const m = VISUAL_TYPE_MAP[v] || { type: 'armor', slot: 'chest' }
                           updateNodeItem(index, { type: m.type, slot: m.slot })
-                        }} options={[
-                          { value: 'weapon',      label: 'Arma' },
-                          { value: 'armor_head',  label: 'Casco' },
-                          { value: 'armor_chest', label: 'Pechera' },
-                          { value: 'armor_legs',  label: 'Canilleras' },
-                          { value: 'armor_boots', label: 'Botas' },
-                          { value: 'ring',        label: 'Brazales' },
-                          { value: 'accessory',   label: 'Bolso' },
-                          { value: 'misc',        label: 'Misc' },
-                        ]} />
+                        }} options={EQUIP_VISUAL_OPTIONS} />
                         <LabeledNumber label="Poder" value={item.power} onChange={value => updateNodeItem(index, { power: value })} />
                         <LabeledSelect label="Rareza" value={item.rarity} onChange={value => updateNodeItem(index, { rarity: value })} options={[
                           { value: 'common', label: 'Comun' },
@@ -2464,7 +2463,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateRunnerEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateRunnerEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -2508,7 +2507,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateQuizEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateQuizEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -2583,7 +2582,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateSnakeEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateSnakeEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -2632,7 +2631,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateMinefieldEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateMinefieldEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -2681,7 +2680,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateDiceCombatEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateDiceCombatEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -2743,7 +2742,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateCircuitPuzzleEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateCircuitPuzzleEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -2789,7 +2788,7 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateNetworkCardEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
+                                updateNetworkCardEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
@@ -3000,18 +2999,9 @@ export default function AdminPage() {
                   <LabeledSelect label="Nodo" value={item.sceneKey} onChange={value => updateNodeItem(index, { sceneKey: value })} options={nodeOptions} />
                   <LabeledInput label="Nombre" value={item.name} onChange={value => updateNodeItem(index, { name: value })} placeholder="Pistola oxidada" />
                   <LabeledSelect label="Tipo de equipo" value={getVisualType(item.type, item.slot)} onChange={v => {
-                    const m = VISUAL_TYPE_MAP[v] || { type: 'misc', slot: '' }
+                    const m = VISUAL_TYPE_MAP[v] || { type: 'armor', slot: 'chest' }
                     updateNodeItem(index, { type: m.type, slot: m.slot })
-                  }} options={[
-                    { value: 'weapon',      label: 'Arma' },
-                    { value: 'armor_head',  label: 'Casco' },
-                    { value: 'armor_chest', label: 'Pechera / Armadura' },
-                    { value: 'armor_legs',  label: 'Canilleras / Rodilleras' },
-                    { value: 'armor_boots', label: 'Botas' },
-                    { value: 'ring',        label: 'Brazales' },
-                    { value: 'accessory',   label: 'Bolso / Accesorio' },
-                    { value: 'misc',        label: 'Objeto misc' },
-                  ]} />
+                  }} options={EQUIP_VISUAL_OPTIONS} />
                   <LabeledNumber label="Poder" value={item.power} onChange={value => updateNodeItem(index, { power: value })} />
                   <LabeledSelect label="Rareza" value={item.rarity} onChange={value => updateNodeItem(index, { rarity: value })} options={[
                     { value: 'common', label: 'Comun' },
@@ -3090,11 +3080,8 @@ export default function AdminPage() {
                 <LabeledNumber label="Segundos por turno" value={event.memoryTurnSeconds} onChange={value => updateMemoryEvent(index, { memoryTurnSeconds: value })} />
                 <LabeledInput label="Premio si gana" value={event.memoryRewardItemName} onChange={value => updateMemoryEvent(index, { memoryRewardItemName: value })} placeholder="Brazal de memoria" />
                 <LabeledSelect label="Tipo premio" value={event.memoryRewardItemType} onChange={value => updateMemoryEvent(index, { memoryRewardItemType: value })} options={[
-                  { value: 'weapon', label: 'Arma' },
-                  { value: 'armor', label: 'Armadura' },
+                  ...EQUIP_VISUAL_OPTIONS,
                   { value: 'potion', label: 'Pocion' },
-                  { value: 'ring', label: 'Brazales' },
-                  { value: 'misc', label: 'Otro' },
                 ]} />
                 <LabeledNumber label="Poder premio" value={event.memoryRewardItemPower} onChange={value => updateMemoryEvent(index, { memoryRewardItemPower: value })} />
               </div>
@@ -3477,11 +3464,8 @@ function EventOptionEditor({ title, event, prefix, onChange }: { title: string; 
           <div className="grid gap-2 md:grid-cols-3">
             <LabeledInput label="Objeto premio" value={String(event[itemNameKey])} onChange={value => onChange({ [itemNameKey]: value } as Partial<StoryChoiceEventConfig>)} placeholder="Pistola de plasma" />
             <LabeledSelect label="Tipo" value={String(event[itemTypeKey])} onChange={value => onChange({ [itemTypeKey]: value } as Partial<StoryChoiceEventConfig>)} options={[
-              { value: 'weapon', label: 'Arma' },
-              { value: 'armor', label: 'Armadura' },
+              ...EQUIP_VISUAL_OPTIONS,
               { value: 'potion', label: 'Pocion' },
-              { value: 'ring', label: 'Brazales' },
-              { value: 'misc', label: 'Otro' },
             ]} />
             <LabeledNumber label="Poder" value={Number(event[itemPowerKey]) || 0} onChange={value => onChange({ [itemPowerKey]: value } as Partial<StoryChoiceEventConfig>)} />
           </div>
