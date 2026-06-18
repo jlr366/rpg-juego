@@ -93,6 +93,7 @@ interface MemoryEventConfig {
   memoryStakeItemName: string
   memoryRewardItemName: string
   memoryRewardItemType: string
+  memoryRewardItemSlot?: string
   memoryRewardItemPower: number
   memoryWinText: string
   memoryLoseText: string
@@ -2419,16 +2420,16 @@ export default function AdminPage() {
                               <span>Premio (item)</span>
                               <select value={event.memoryRewardItemName} onChange={e => {
                                 const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
-                                updateMemoryEvent(index, { memoryRewardItemName: e.target.value, ...(it ? { memoryRewardItemType: it.type, memoryRewardItemPower: it.power } : {}) })
+                                updateMemoryEvent(index, { memoryRewardItemName: e.target.value, ...(it ? { memoryRewardItemType: it.type, memoryRewardItemSlot: it.slot, memoryRewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2466,13 +2467,13 @@ export default function AdminPage() {
                                 updateRunnerEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2510,13 +2511,13 @@ export default function AdminPage() {
                                 updateQuizEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2585,13 +2586,13 @@ export default function AdminPage() {
                                 updateSnakeEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2634,13 +2635,13 @@ export default function AdminPage() {
                                 updateMinefieldEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2683,13 +2684,13 @@ export default function AdminPage() {
                                 updateDiceCombatEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2745,13 +2746,13 @@ export default function AdminPage() {
                                 updateCircuitPuzzleEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2791,13 +2792,13 @@ export default function AdminPage() {
                                 updateNetworkCardEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
-                                {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                                  <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                      <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                    ))}
+                                <optgroup label="Equipamiento">
+                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                        ))
+                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                                   </optgroup>
-                                )}
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2956,13 +2957,13 @@ export default function AdminPage() {
                     updateEnemy(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
                   }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                     <option value="">-- Sin premio --</option>
-                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0 && (
-                      <optgroup label="Equipamiento">
-                        {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                        ))}
+                    <optgroup label="Equipamiento">
+                        {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
+                          ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
+                              <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                            ))
+                          : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
                       </optgroup>
-                    )}
                     <optgroup label="Pociones">
                       {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                         <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -3079,7 +3080,7 @@ export default function AdminPage() {
                 <LabeledInput label="Rival" value={event.memoryEnemyName} onChange={value => updateMemoryEvent(index, { memoryEnemyName: value })} placeholder="Tahur 8-bit" />
                 <LabeledNumber label="Segundos por turno" value={event.memoryTurnSeconds} onChange={value => updateMemoryEvent(index, { memoryTurnSeconds: value })} />
                 <LabeledInput label="Premio si gana" value={event.memoryRewardItemName} onChange={value => updateMemoryEvent(index, { memoryRewardItemName: value })} placeholder="Brazal de memoria" />
-                <LabeledSelect label="Tipo premio" value={event.memoryRewardItemType} onChange={value => updateMemoryEvent(index, { memoryRewardItemType: value })} options={[
+                <LabeledSelect label="Tipo premio" value={event.memoryRewardItemType} onChange={value => updateMemoryEvent(index, { memoryRewardItemType: value, memoryRewardItemSlot: value === 'potion' ? '' : value })} options={[
                   ...EQUIP_VISUAL_OPTIONS,
                   { value: 'potion', label: 'Pocion' },
                 ]} />

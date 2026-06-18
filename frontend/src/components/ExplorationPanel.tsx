@@ -111,6 +111,7 @@ interface MemoryEventConfig {
   memoryStakeItemName?: string
   memoryRewardItemName?: string
   memoryRewardItemType?: string
+  memoryRewardItemSlot?: string
   memoryRewardItemPower?: number
   memoryWinText?: string
   memoryLoseText?: string
@@ -788,7 +789,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       const rewardName = event.memoryRewardItemName
       if (rewardName) {
         const power = Number(event.memoryRewardItemPower) || 0
-        applyGameReward(rewardName, event.memoryRewardItemType || 'misc', power, event.memoryWinText || `¡Ganaste el duelo de memoria contra ${event.memoryEnemyName || 'el rival'}!`)
+        applyGameReward(rewardName, event.memoryRewardItemType || 'misc', power, event.memoryWinText || `¡Ganaste el duelo de memoria contra ${event.memoryEnemyName || 'el rival'}!`, event.memoryRewardItemSlot)
       } else {
         setEventResultText(event.memoryWinText || `¡Ganaste el duelo de memoria!`)
         setGameResultPending(true)
