@@ -24,6 +24,7 @@ export interface CircuitPuzzleEventConfig {
   title?: string
   prompt?: string
   levelId?: number
+  customLevelKey?: string
   rewardItemName?: string
   rewardItemType?: string
   rewardItemPower?: number
@@ -39,14 +40,15 @@ interface Props {
   playerMaxHealth: number
   onFinish: (result: CircuitPuzzleResult) => void
   onDamagePlayer: (damage: number) => void
+  customLevels?: CircuitLevelConfig[]
 }
 
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
-type CompId = 'waf' | 'vpc' | 'sg' | 'ec2' | 's3' | 'elb' | 'rds' | 'dynamo' | 'fw' | 'cf' | 'iam' | 'lambda'
+export type CompId = 'waf' | 'vpc' | 'sg' | 'ec2' | 's3' | 'elb' | 'rds' | 'dynamo' | 'fw' | 'cf' | 'iam' | 'lambda'
 interface CompDef { label: string; color: string; img?: string; badge?: string }
 
-const COMP_DEFS: Record<CompId, CompDef> = {
+export const COMP_DEFS: Record<CompId, CompDef> = {
   waf:    { label: 'AWS WAF',          color: '#dc2626', img: iconWAF    },
   vpc:    { label: 'VPC',              color: '#10b981', img: iconVPC    },
   sg:     { label: 'Security Group',   color: '#f97316', badge: 'SG'    },
@@ -63,8 +65,19 @@ const COMP_DEFS: Record<CompId, CompDef> = {
 
 // ─── Levels ───────────────────────────────────────────────────────────────────
 
-interface SlotDef { id: string; answer: CompId; label: string; row: number; col: number; insideVpc?: boolean }
-interface LevelDef { title: string; story: string; slots: SlotDef[]; toolbox: CompId[]; winTitle: string; loseTitle: string }
+export interface SlotDef { id: string; answer: CompId; label: string; row: number; col: number; insideVpc?: boolean }
+export interface LevelDef { title: string; story: string; slots: SlotDef[]; toolbox: CompId[]; winTitle: string; loseTitle: string }
+
+// A custom, admin-created circuit level — same shape as LevelDef plus a unique key/name for selection
+export interface CircuitLevelConfig {
+  key: string
+  name: string
+  story: string
+  winTitle: string
+  loseTitle: string
+  slots: SlotDef[]
+  toolbox: CompId[]
+}
 
 const LEVELS: LevelDef[] = [
   {
@@ -213,10 +226,15 @@ function Arrow({ lit, animated, delay = 0 }: { lit: boolean; animated: boolean; 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export const CircuitPuzzleGame: React.FC<Props> = ({
-  event, playerHealth, playerMaxHealth, onFinish, onDamagePlayer,
+  event, playerHealth, playerMaxHealth, onFinish, onDamagePlayer, customLevels,
 }) => {
+  const customLevel = event.customLevelKey
+    ? customLevels?.find(l => l.key === event.customLevelKey)
+    : undefined
   const levelId = event.levelId ?? 0
-  const level   = LEVELS[Math.min(levelId, LEVELS.length - 1)]
+  const level: LevelDef = customLevel
+    ? { title: customLevel.name, story: customLevel.story, slots: customLevel.slots, toolbox: customLevel.toolbox, winTitle: customLevel.winTitle, loseTitle: customLevel.loseTitle }
+    : LEVELS[Math.min(levelId, LEVELS.length - 1)]
 
   const [placed, setPlaced]         = useState<Record<string, CompId | null>>(() =>
     Object.fromEntries(level.slots.map(s => [s.id, null]))

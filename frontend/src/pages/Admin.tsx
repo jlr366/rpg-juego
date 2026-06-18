@@ -10,7 +10,7 @@ import { MemoryDuelBoard } from '../components/ExplorationPanel'
 import { ArchitectureGame } from '../components/ArchitectureGame'
 import { MinefieldGame } from '../components/MinefieldGame'
 import { DiceCombatGame, DiceCombatEventConfig } from '../components/DiceCombatGame'
-import { CircuitPuzzleGame, CircuitPuzzleEventConfig } from '../components/CircuitPuzzleGame'
+import { CircuitPuzzleGame, CircuitPuzzleEventConfig, CircuitLevelConfig, CompId, COMP_DEFS, SlotDef } from '../components/CircuitPuzzleGame'
 import { NetworkCardGame, NetworkCardEventConfig } from '../components/NetworkCardGame'
 
 interface SceneConfig {
@@ -208,6 +208,7 @@ interface StoryConfig {
   minefieldEvents?: MinefieldEventConfig[]
   diceCombatEvents?: DiceCombatEventConfig[]
   circuitPuzzleEvents?: CircuitPuzzleEventConfig[]
+  circuitLevels?: CircuitLevelConfig[]
   networkCardEvents?: NetworkCardEventConfig[]
   globalMusicUrl?: string
   victorySound?: string
@@ -234,7 +235,18 @@ const emptyConfig: StoryConfig = {
   minefieldEvents: [],
   diceCombatEvents: [],
   circuitPuzzleEvents: [],
+  circuitLevels: [],
   networkCardEvents: [],
+}
+
+const blankCircuitLevel: CircuitLevelConfig = {
+  key: '',
+  name: '',
+  story: '',
+  winTitle: '⚡ ¡Circuito completado!',
+  loseTitle: '💥 ¡Sistema comprometido!',
+  slots: [],
+  toolbox: [],
 }
 
 const blankScene: SceneConfig = {
@@ -611,6 +623,7 @@ export default function AdminPage() {
   const lastSavedConfigRef = useRef('')
   const hasLoadedConfigRef = useRef(false)
   const autosaveTimerRef = useRef<number | null>(null)
+  const saveRequestIdRef = useRef(0)
 
   // -- Saved stories (database) ------------------------------------------------
   interface SavedStory { id: string; name: string; savedAt: number }
@@ -789,6 +802,7 @@ export default function AdminPage() {
           minefieldEvents: data.config?.minefieldEvents || [],
           diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
+          circuitLevels: data.config?.circuitLevels || [],
           networkCardEvents: data.config?.networkCardEvents || [],
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
@@ -840,6 +854,7 @@ export default function AdminPage() {
   const saveConfig = async () => {
     setSaving(true)
     setMessage('')
+    const requestId = ++saveRequestIdRef.current
     try {
       const draftProblem = findDraftProblem(config)
       if (draftProblem) throw new Error(`${draftProblem} Completa esos campos antes de guardar.`)
@@ -877,6 +892,7 @@ export default function AdminPage() {
         minefieldEvents: data.config?.minefieldEvents || [],
         diceCombatEvents: data.config?.diceCombatEvents || [],
         circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
+        circuitLevels: data.config?.circuitLevels || [],
         networkCardEvents: data.config?.networkCardEvents || [],
         globalMusicUrl: data.config?.globalMusicUrl || '',
         victorySound: data.config?.victorySound || '',
@@ -885,9 +901,13 @@ export default function AdminPage() {
         combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
         combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
       }
-      lastSavedConfigRef.current = JSON.stringify(savedConfig)
-      setConfig(savedConfig)
-      publishStoryUpdate(savedConfig)
+      // Only apply this response if no newer save has started meanwhile —
+      // otherwise a slower request could overwrite fresher local edits (e.g. music just uploaded).
+      if (requestId === saveRequestIdRef.current) {
+        lastSavedConfigRef.current = JSON.stringify(savedConfig)
+        setConfig(savedConfig)
+        publishStoryUpdate(savedConfig)
+      }
       setMessage('Guardado. El juego ya usa esta historia; vuelve al juego o recarga para verla.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Error guardando')
@@ -914,6 +934,7 @@ export default function AdminPage() {
 
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current)
     autosaveTimerRef.current = window.setTimeout(async () => {
+      const requestId = ++saveRequestIdRef.current
       try {
         const prepared = await uploadConfigAssets(config)
         const response = await adminFetch('/api/admin/story-config', {
@@ -929,6 +950,8 @@ export default function AdminPage() {
           }
           return
         }
+        // A newer save (manual or autosave) started while this request was in flight — discard this stale response.
+        if (requestId !== saveRequestIdRef.current) return
         const data = await response.json()
         const savedConfig = {
           scenes: (data.config?.scenes || []).map(normalizeScene),
@@ -947,6 +970,7 @@ export default function AdminPage() {
           minefieldEvents: data.config?.minefieldEvents || [],
           diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
+          circuitLevels: data.config?.circuitLevels || [],
           networkCardEvents: data.config?.networkCardEvents || [],
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
@@ -1415,6 +1439,76 @@ export default function AdminPage() {
     }))
   }
 
+  // -- Custom Circuit Lab levels ------------------------------------------------
+  const addCircuitLevel = () => {
+    const n = (config.circuitLevels || []).length + 1
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: [...(prev.circuitLevels || []), {
+        ...blankCircuitLevel,
+        key: `customcircuit${Date.now()}`,
+        name: `Nivel personalizado ${n}`,
+        slots: [{ id: `slot${Date.now()}`, answer: 'ec2' as CompId, label: 'Slot 1', row: 1, col: 1, insideVpc: false }],
+        toolbox: ['ec2'],
+      }],
+    }))
+  }
+
+  const updateCircuitLevel = (index: number, patch: Partial<CircuitLevelConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: (prev.circuitLevels || []).map((lvl, i) => i === index ? { ...lvl, ...patch } : lvl),
+    }))
+  }
+
+  const deleteCircuitLevel = (index: number) => {
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: (prev.circuitLevels || []).filter((_, i) => i !== index),
+    }))
+  }
+
+  const addSlotToCircuitLevel = (levelIndex: number) => {
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: (prev.circuitLevels || []).map((lvl, i) => {
+        if (i !== levelIndex) return lvl
+        const col = lvl.slots.length + 1
+        return { ...lvl, slots: [...lvl.slots, { id: `slot${Date.now()}`, answer: 'ec2' as CompId, label: `Slot ${col}`, row: 1, col, insideVpc: false }] }
+      }),
+    }))
+  }
+
+  const updateCircuitLevelSlot = (levelIndex: number, slotIndex: number, patch: Partial<SlotDef>) => {
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: (prev.circuitLevels || []).map((lvl, i) => i !== levelIndex ? lvl : {
+        ...lvl,
+        slots: lvl.slots.map((s, si) => si === slotIndex ? { ...s, ...patch } : s),
+      }),
+    }))
+  }
+
+  const deleteCircuitLevelSlot = (levelIndex: number, slotIndex: number) => {
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: (prev.circuitLevels || []).map((lvl, i) => i !== levelIndex ? lvl : {
+        ...lvl,
+        slots: lvl.slots.filter((_, si) => si !== slotIndex),
+      }),
+    }))
+  }
+
+  const toggleCircuitLevelToolboxComponent = (levelIndex: number, comp: CompId) => {
+    setConfig(prev => ({
+      ...prev,
+      circuitLevels: (prev.circuitLevels || []).map((lvl, i) => i !== levelIndex ? lvl : {
+        ...lvl,
+        toolbox: lvl.toolbox.includes(comp) ? lvl.toolbox.filter(c => c !== comp) : [...lvl.toolbox, comp],
+      }),
+    }))
+  }
+
   const addNetworkCardToNode = (sceneKey: string) => {
     setConfig(prev => ({
       ...prev,
@@ -1870,6 +1964,136 @@ export default function AdminPage() {
                   )}
                   {uploading && (
                     <p className={`mt-1 text-[10px] text-${accent}-400 animate-pulse`}>Subiendo archivo...</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Laboratorio de Circuitos: niveles personalizados ── */}
+        <div className="rounded-xl border border-emerald-800/30 bg-slate-900/80 px-5 py-4 shadow-lg">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-300">
+              🔌 Laboratorio de Circuitos — Niveles personalizados
+            </h2>
+            <button
+              onClick={addCircuitLevel}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-700/80 px-3 py-1.5 text-xs font-semibold shadow transition hover:bg-emerald-600"
+            >
+              + Crear nivel
+            </button>
+          </div>
+          <p className="mb-4 text-xs text-slate-400">
+            Diseña tu propio circuito: define los slots, qué componente va en cada uno, y qué componentes aparecen disponibles para arrastrar.
+            Luego selecciónalo en cualquier "Laboratorio de Circuito" de un nodo, en el campo Nivel.
+          </p>
+
+          {(config.circuitLevels || []).length === 0 && (
+            <p className="text-xs italic text-slate-500">Sin niveles personalizados todavía. Crea uno para empezar.</p>
+          )}
+
+          <div className="space-y-3">
+            {(config.circuitLevels || []).map((level, index) => {
+              const answeredComps = new Set(level.slots.map(s => s.answer))
+              const missingFromToolbox = level.slots.filter(s => s.answer && !level.toolbox.includes(s.answer))
+              const testCardKey = `cl-${index}`
+              const testEvent: CircuitPuzzleEventConfig = {
+                key: 'test', sceneKey: 'test', customLevelKey: level.key, title: level.name,
+              }
+              return (
+                <div key={level.key || index} className="rounded border border-emerald-800/40 bg-slate-950/60">
+                  <div className="flex items-center justify-between border-b border-emerald-800/30 px-3 py-1.5">
+                    <span className="text-[11px] font-bold text-emerald-300">🎨 {level.name || 'Nivel sin nombre'}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setTestingCard(testingCard === testCardKey ? null : testCardKey)}
+                        disabled={level.slots.length === 0}
+                        className={`rounded px-2 py-0.5 text-[10px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${testingCard === testCardKey ? 'bg-emerald-600 text-white' : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-700'}`}
+                      >
+                        {testingCard === testCardKey ? '▲ Cerrar' : '▶ Probar'}
+                      </button>
+                      <button onClick={() => deleteCircuitLevel(index)} className="rounded bg-red-700/50 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-600">Eliminar</button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 p-3 md:grid-cols-2">
+                    <LabeledInput label="Nombre del nivel" value={level.name} onChange={v => updateCircuitLevel(index, { name: v })} placeholder="Defensa de la VPC norte" />
+                    <LabeledInput label="Clave (interna)" value={level.key} onChange={v => updateCircuitLevel(index, { key: v })} placeholder="customcircuit1" />
+                    <label className="space-y-1 text-xs font-semibold text-slate-300 md:col-span-2">
+                      <span>Historia / instrucciones</span>
+                      <textarea value={level.story} onChange={e => updateCircuitLevel(index, { story: e.target.value })} rows={2}
+                        placeholder="Necesitas estos componentes en orden para..."
+                        className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-500/60 focus:outline-none" />
+                    </label>
+                    <LabeledInput label="Título si gana" value={level.winTitle} onChange={v => updateCircuitLevel(index, { winTitle: v })} placeholder="⚡ ¡Circuito completado!" />
+                    <LabeledInput label="Título si pierde" value={level.loseTitle} onChange={v => updateCircuitLevel(index, { loseTitle: v })} placeholder="💥 ¡Sistema comprometido!" />
+                  </div>
+
+                  {/* Slots */}
+                  <div className="border-t border-emerald-800/30 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Slots ({level.slots.length})</span>
+                      <button onClick={() => addSlotToCircuitLevel(index)} className="rounded bg-emerald-800/60 px-2 py-0.5 text-[10px] font-bold text-emerald-200 hover:bg-emerald-700">+ Añadir slot</button>
+                    </div>
+                    {level.slots.length === 0 && <p className="text-xs italic text-slate-500">Sin slots. Añade al menos uno.</p>}
+                    <div className="space-y-1.5">
+                      {level.slots.map((slot, slotIndex) => (
+                        <div key={slot.id} className="grid grid-cols-[1fr_1fr_auto_auto] items-end gap-1.5 rounded bg-slate-900/70 p-1.5">
+                          <LabeledInput label="Etiqueta" value={slot.label} onChange={v => updateCircuitLevelSlot(index, slotIndex, { label: v })} placeholder="Firewall web" />
+                          <LabeledSelect
+                            label="Componente correcto"
+                            value={slot.answer}
+                            onChange={v => updateCircuitLevelSlot(index, slotIndex, { answer: v as CompId })}
+                            options={(Object.keys(COMP_DEFS) as CompId[]).map(id => ({ value: id, label: COMP_DEFS[id].label }))}
+                          />
+                          <label className="flex items-center gap-1 pb-2 text-[10px] font-semibold text-slate-300">
+                            <input type="checkbox" checked={!!slot.insideVpc} onChange={e => updateCircuitLevelSlot(index, slotIndex, { insideVpc: e.target.checked })} />
+                            Dentro de VPC
+                          </label>
+                          <button onClick={() => deleteCircuitLevelSlot(index, slotIndex)} className="flex h-7 w-7 items-center justify-center rounded bg-red-700/50 text-[10px] font-bold text-red-200 hover:bg-red-600">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Toolbox */}
+                  <div className="border-t border-emerald-800/30 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Componentes disponibles para arrastrar ({level.toolbox.length})</span>
+                      {missingFromToolbox.length > 0 && (
+                        <button
+                          onClick={() => updateCircuitLevel(index, { toolbox: Array.from(new Set([...level.toolbox, ...Array.from(answeredComps)])) })}
+                          className="rounded bg-amber-800/60 px-2 py-0.5 text-[10px] font-bold text-amber-200 hover:bg-amber-700"
+                        >
+                          ⚠ Incluir respuestas faltantes
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6">
+                      {(Object.keys(COMP_DEFS) as CompId[]).map(id => (
+                        <label key={id} className={`flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-semibold transition ${level.toolbox.includes(id) ? 'border-emerald-500/50 bg-emerald-900/40 text-emerald-200' : 'border-slate-700/50 bg-slate-900/40 text-slate-400'}`}>
+                          <input type="checkbox" checked={level.toolbox.includes(id)} onChange={() => toggleCircuitLevelToolboxComponent(index, id)} />
+                          {COMP_DEFS[id].label}
+                        </label>
+                      ))}
+                    </div>
+                    {missingFromToolbox.length > 0 && (
+                      <p className="mt-1.5 text-[10px] text-amber-400/80">Falta incluir en la caja de herramientas: {missingFromToolbox.map(s => COMP_DEFS[s.answer]?.label || s.answer).join(', ')}.</p>
+                    )}
+                  </div>
+
+                  {testingCard === testCardKey && level.slots.length > 0 && (
+                    <div className="border-t border-emerald-800/30 p-2">
+                      <CircuitPuzzleGame
+                        event={testEvent}
+                        customLevels={config.circuitLevels}
+                        playerHealth={100}
+                        playerMaxHealth={100}
+                        onFinish={() => setTestingCard(null)}
+                        onDamagePlayer={() => {}}
+                      />
+                    </div>
                   )}
                 </div>
               )
@@ -2543,11 +2767,23 @@ export default function AdminPage() {
                           <div className="grid gap-2 p-2 md:grid-cols-2">
                             <LabeledInput label="Clave" value={event.key || ''} onChange={v => updateCircuitPuzzleEvent(index, { key: v })} placeholder="circuit1" />
                             <LabeledInput label="Titulo" value={event.title || ''} onChange={v => updateCircuitPuzzleEvent(index, { title: v })} placeholder="Circuito de misiles" />
-                            <LabeledSelect label="Nivel" value={String(event.levelId ?? 0)} onChange={v => updateCircuitPuzzleEvent(index, { levelId: Number(v) })} options={[
-                              { value: '0', label: 'N1 - Sistema de misiles (WAF+SG+EC2+S3)' },
-                              { value: '1', label: 'N2 - Red de inteligencia (WAF+ELB+EC2+DDB+S3)' },
-                              { value: '2', label: 'N3 - Cuartel alta disponibilidad (FW+WAF+ELB+EC2+RDS)' },
-                            ]} />
+                            <LabeledSelect
+                              label="Nivel"
+                              value={event.customLevelKey ? `custom:${event.customLevelKey}` : String(event.levelId ?? 0)}
+                              onChange={v => {
+                                if (v.startsWith('custom:')) {
+                                  updateCircuitPuzzleEvent(index, { customLevelKey: v.slice('custom:'.length) })
+                                } else {
+                                  updateCircuitPuzzleEvent(index, { levelId: Number(v), customLevelKey: '' })
+                                }
+                              }}
+                              options={[
+                                { value: '0', label: 'N1 - Sistema de misiles (WAF+SG+EC2+S3)' },
+                                { value: '1', label: 'N2 - Red de inteligencia (WAF+ELB+EC2+DDB+S3)' },
+                                { value: '2', label: 'N3 - Cuartel alta disponibilidad (FW+WAF+ELB+EC2+RDS)' },
+                                ...(config.circuitLevels || []).map(lvl => ({ value: `custom:${lvl.key}`, label: `🎨 ${lvl.name}` })),
+                              ]}
+                            />
                             <LabeledInput label="Prompt" value={event.prompt || ''} onChange={v => updateCircuitPuzzleEvent(index, { prompt: v })} placeholder="Los misiles esperan activación..." />
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
@@ -2575,7 +2811,7 @@ export default function AdminPage() {
                           </div>
                           {testingCard === `cp-${index}` && (
                             <div className="border-t border-emerald-800/30 p-2">
-                              <CircuitPuzzleGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} playerHealth={100} playerMaxHealth={100} onFinish={() => setTestingCard(null)} onDamagePlayer={() => {}} />
+                              <CircuitPuzzleGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} customLevels={config.circuitLevels} playerHealth={100} playerMaxHealth={100} onFinish={() => setTestingCard(null)} onDamagePlayer={() => {}} />
                             </div>
                           )}
                         </div>

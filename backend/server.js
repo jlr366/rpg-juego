@@ -165,6 +165,7 @@ const DEFAULT_STORY_CONFIG = {
   minefieldEvents: [],
   diceCombatEvents: [],
   circuitPuzzleEvents: [],
+  circuitLevels: [],
 }
 
 const INVENTORY_ITEM_LIMIT = 5
@@ -435,6 +436,7 @@ function normalizeStoryConfig(config) {
             title: typeof ev.title === 'string' ? ev.title.trim() : '',
             prompt: typeof ev.prompt === 'string' ? ev.prompt.trim() : '',
             levelId: Number.isFinite(Number(ev.levelId)) ? Number(ev.levelId) : 0,
+            customLevelKey: typeof ev.customLevelKey === 'string' ? ev.customLevelKey.trim() : '',
             rewardItemName: typeof ev.rewardItemName === 'string' ? ev.rewardItemName.trim() : '',
             rewardItemType: typeof ev.rewardItemType === 'string' ? ev.rewardItemType.trim() : 'misc',
             rewardItemPower: Number.isFinite(Number(ev.rewardItemPower)) ? Number(ev.rewardItemPower) : 0,
@@ -442,6 +444,30 @@ function normalizeStoryConfig(config) {
             loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
           }))
           .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
+      : [],
+    circuitLevels: Array.isArray(config?.circuitLevels)
+      ? config.circuitLevels
+          .map((lvl, index) => ({
+            key: typeof lvl.key === 'string' && lvl.key.trim() ? lvl.key.trim() : `customcircuit${index + 1}`,
+            name: typeof lvl.name === 'string' && lvl.name.trim() ? lvl.name.trim() : `Nivel personalizado ${index + 1}`,
+            story: typeof lvl.story === 'string' ? lvl.story.trim() : '',
+            winTitle: typeof lvl.winTitle === 'string' && lvl.winTitle.trim() ? lvl.winTitle.trim() : '⚡ ¡Circuito completado!',
+            loseTitle: typeof lvl.loseTitle === 'string' && lvl.loseTitle.trim() ? lvl.loseTitle.trim() : '💥 ¡Sistema comprometido!',
+            slots: Array.isArray(lvl.slots)
+              ? lvl.slots
+                  .map((s, sIndex) => ({
+                    id: typeof s.id === 'string' && s.id.trim() ? s.id.trim() : `slot${sIndex + 1}`,
+                    answer: typeof s.answer === 'string' ? s.answer.trim() : '',
+                    label: typeof s.label === 'string' ? s.label.trim() : `Slot ${sIndex + 1}`,
+                    row: Number.isFinite(Number(s.row)) ? Number(s.row) : 1,
+                    col: Number.isFinite(Number(s.col)) ? Number(s.col) : sIndex + 1,
+                    insideVpc: Boolean(s.insideVpc),
+                  }))
+                  .filter(s => s.answer)
+              : [],
+            toolbox: Array.isArray(lvl.toolbox) ? lvl.toolbox.filter(c => typeof c === 'string' && c.trim()) : [],
+          }))
+          .filter(lvl => lvl.key && lvl.name && lvl.slots.length > 0)
       : [],
     networkCardEvents: Array.isArray(config?.networkCardEvents)
       ? config.networkCardEvents

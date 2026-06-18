@@ -147,6 +147,7 @@ interface StoryConfig {
   minefieldEvents?: MinefieldEventConfig[]
   networkCardEvents?: NetworkCardEventConfig[]
   archEvents?: any[]
+  circuitLevels?: import('./CircuitPuzzleGame').CircuitLevelConfig[]
 }
 
 /**
@@ -1780,6 +1781,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
                     playerMaxHealth={maxHealth}
                     onFinish={(result) => finishCircuitPuzzle(activeCircuitPuzzleEvent, result)}
                     onDamagePlayer={(dmg) => effectiveInjure(dmg, step)}
+                    customLevels={storyConfig?.circuitLevels}
                   />
                 )}
                 {activeNetworkCardEvent && (
