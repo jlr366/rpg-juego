@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { BookmarkPlus, Flag, FolderOpen, GitBranch, LogOut, MapPin, Music, PackagePlus, Pencil, Plus, Save, Shield, Skull, Swords, Trash2 } from 'lucide-react'
+import { BookmarkPlus, Flag, FolderOpen, GitBranch, LogOut, MapPin, Music, PackagePlus, Pencil, Plus, Save, Skull, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthProvider'
 import { API_BASE_URL } from '../config'
 import { RunnerGame } from '../components/RunnerGame'
@@ -30,21 +30,6 @@ interface DecisionConfig {
   sceneKey: string
   label: string
   nextSceneKey: string
-}
-
-interface EnemyConfig {
-  key: string
-  sceneKey: string
-  name: string
-  attack: number
-  defense: number
-  weakWeapon: string
-  victoryTitle: string
-  defeatTitle: string
-  defeatDescription: string
-  rewardItemName?: string
-  rewardItemType?: string
-  rewardItemPower?: number
 }
 
 interface NodeItemConfig {
@@ -112,12 +97,6 @@ interface MemoryEventConfig {
   memoryRewardItemPower: number
   memoryWinText: string
   memoryLoseText: string
-}
-
-interface DeathTitleConfig {
-  enemyKey: string
-  title: string
-  description: string
 }
 
 interface EndingConfig {
@@ -202,12 +181,10 @@ interface MinefieldEventConfig {
 interface StoryConfig {
   scenes: SceneConfig[]
   decisions: DecisionConfig[]
-  enemies: EnemyConfig[]
   nodeItems: NodeItemConfig[]
   equipmentCatalog: NodeItemConfig[]
   storyEvents: StoryChoiceEventConfig[]
   memoryEvents: MemoryEventConfig[]
-  deathTitles: DeathTitleConfig[]
   endings: EndingConfig[]
   mapLocations: MapLocationConfig[]
   runnerEvents: RunnerEventConfig[]
@@ -220,20 +197,15 @@ interface StoryConfig {
   globalMusicUrl?: string
   victorySound?: string
   defeatSound?: string
-  combatIntroImageUrl?: string
-  combatVictoryImageUrl?: string
-  combatDefeatImageUrl?: string
 }
 
 const emptyConfig: StoryConfig = {
   scenes: [],
   decisions: [],
-  enemies: [],
   nodeItems: [],
   equipmentCatalog: DEFAULT_EQUIPMENT_CATALOG,
   storyEvents: [],
   memoryEvents: [],
-  deathTitles: [],
   endings: [],
   mapLocations: [],
   runnerEvents: [],
@@ -274,21 +246,6 @@ const blankDecision: DecisionConfig = {
   sceneKey: '',
   label: '',
   nextSceneKey: '',
-}
-
-const blankEnemy: EnemyConfig = {
-  key: '',
-  sceneKey: '',
-  name: '',
-  attack: 10,
-  defense: 60,
-  weakWeapon: '',
-  victoryTitle: '',
-  defeatTitle: '',
-  defeatDescription: '',
-  rewardItemName: '',
-  rewardItemType: 'misc',
-  rewardItemPower: 0,
 }
 
 const blankNodeItem: NodeItemConfig = {
@@ -411,15 +368,6 @@ function normalizeScene(scene: Partial<SceneConfig>): SceneConfig {
   }
 }
 
-function normalizeEnemy(enemy: Partial<EnemyConfig>): EnemyConfig {
-  return {
-    ...blankEnemy,
-    ...enemy,
-    attack: Number.isFinite(Number(enemy.attack)) ? Number(enemy.attack) : blankEnemy.attack,
-    defense: Number.isFinite(Number(enemy.defense)) ? Number(enemy.defense) : blankEnemy.defense,
-  }
-}
-
 function normalizeNodeItem(item: Partial<NodeItemConfig>): NodeItemConfig {
   return {
     ...blankNodeItem,
@@ -464,7 +412,6 @@ function normalizeMapLocation(loc: Partial<MapLocationConfig>, index = 0): MapLo
 function findNodeEventConflict(config: StoryConfig): string {
   for (const scene of config.scenes) {
     const types = [
-      config.enemies.some(enemy => enemy.sceneKey === scene.key) ? 'enemigo' : '',
       config.storyEvents.some(event => event.sceneKey === scene.key) ? 'evento de dos opciones' : '',
       config.memoryEvents.some(event => event.sceneKey === scene.key) ? 'duelo memoria' : '',
     ].filter(Boolean)
@@ -477,9 +424,6 @@ function findDraftProblem(config: StoryConfig): string {
   if (config.scenes.some(scene => !scene.key.trim())) return 'Hay nodos sin numero.'
   if (config.decisions.some(decision => !decision.sceneKey.trim() || !decision.label.trim() || !decision.nextSceneKey.trim())) {
     return 'Hay decisiones sin nodo origen, texto o destino.'
-  }
-  if (config.enemies.some(enemy => !enemy.key.trim() || !enemy.sceneKey.trim() || !enemy.name.trim())) {
-    return 'Hay enemigos sin clave, nodo o nombre.'
   }
   if (config.nodeItems.some(item => !item.sceneKey.trim() || !item.name.trim() || !item.type.trim())) {
     return 'Hay objetos o pociones sin nodo, nombre o tipo.'
@@ -788,12 +732,10 @@ export default function AdminPage() {
         const loadedConfig = {
           scenes: (data.config?.scenes || []).map(normalizeScene),
           decisions: data.config?.decisions || [],
-          enemies: (data.config?.enemies || []).map(normalizeEnemy),
           nodeItems: (data.config?.nodeItems || []).map(normalizeNodeItem),
           equipmentCatalog: data.config?.equipmentCatalog || DEFAULT_EQUIPMENT_CATALOG,
           storyEvents: (data.config?.storyEvents || []).map(normalizeStoryEvent),
           memoryEvents: (data.config?.memoryEvents || []).map(normalizeMemoryEvent),
-          deathTitles: data.config?.deathTitles || [],
           endings: data.config?.endings || [],
           mapLocations: (data.config?.mapLocations || []).map(normalizeMapLocation),
           runnerEvents: data.config?.runnerEvents || [],
@@ -806,9 +748,6 @@ export default function AdminPage() {
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
-          combatIntroImageUrl: data.config?.combatIntroImageUrl || '',
-          combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
-          combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
         }
         lastSavedConfigRef.current = JSON.stringify(loadedConfig)
         hasLoadedConfigRef.current = true
@@ -877,12 +816,10 @@ export default function AdminPage() {
       const savedConfig = {
         scenes: (data.config?.scenes || []).map(normalizeScene),
         decisions: data.config?.decisions || [],
-        enemies: (data.config?.enemies || []).map(normalizeEnemy),
         nodeItems: (data.config?.nodeItems || []).map(normalizeNodeItem),
           equipmentCatalog: data.config?.equipmentCatalog || DEFAULT_EQUIPMENT_CATALOG,
         storyEvents: (data.config?.storyEvents || []).map(normalizeStoryEvent),
         memoryEvents: (data.config?.memoryEvents || []).map(normalizeMemoryEvent),
-        deathTitles: data.config?.deathTitles || [],
         endings: data.config?.endings || [],
         mapLocations: (data.config?.mapLocations || []).map(normalizeMapLocation),
         runnerEvents: data.config?.runnerEvents || [],
@@ -895,9 +832,6 @@ export default function AdminPage() {
         globalMusicUrl: data.config?.globalMusicUrl || '',
         victorySound: data.config?.victorySound || '',
         defeatSound: data.config?.defeatSound || '',
-        combatIntroImageUrl: data.config?.combatIntroImageUrl || '',
-        combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
-        combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
       }
       // Only apply this response if no newer save has started meanwhile —
       // otherwise a slower request could overwrite fresher local edits (e.g. music just uploaded).
@@ -954,12 +888,10 @@ export default function AdminPage() {
         const savedConfig = {
           scenes: (data.config?.scenes || []).map(normalizeScene),
           decisions: data.config?.decisions || [],
-          enemies: (data.config?.enemies || []).map(normalizeEnemy),
           nodeItems: (data.config?.nodeItems || []).map(normalizeNodeItem),
           equipmentCatalog: data.config?.equipmentCatalog || DEFAULT_EQUIPMENT_CATALOG,
           storyEvents: (data.config?.storyEvents || []).map(normalizeStoryEvent),
           memoryEvents: (data.config?.memoryEvents || []).map(normalizeMemoryEvent),
-          deathTitles: data.config?.deathTitles || [],
           endings: data.config?.endings || [],
           mapLocations: (data.config?.mapLocations || []).map(normalizeMapLocation),
           runnerEvents: data.config?.runnerEvents || [],
@@ -972,18 +904,14 @@ export default function AdminPage() {
           globalMusicUrl: data.config?.globalMusicUrl || '',
           victorySound: data.config?.victorySound || '',
           defeatSound: data.config?.defeatSound || '',
-          combatIntroImageUrl: data.config?.combatIntroImageUrl || '',
-          combatVictoryImageUrl: data.config?.combatVictoryImageUrl || '',
-          combatDefeatImageUrl: data.config?.combatDefeatImageUrl || '',
         }
         // Detect if backend dropped any items (key mismatch / orphaned sceneKey)
         const sent = prepared.config
         const lostScenes   = (sent.scenes?.length || 0) - (savedConfig.scenes.length)
         const lostEvents   = ((sent.storyEvents?.length || 0) + (sent.runnerEvents?.length || 0) + (sent.quizEvents?.length || 0) + (sent.snakeEvents?.length || 0) + (sent.minefieldEvents?.length || 0) + (sent.circuitPuzzleEvents?.length || 0) + (sent.networkCardEvents?.length || 0) + (sent.memoryEvents?.length || 0))
           - ((savedConfig.storyEvents.length) + (savedConfig.runnerEvents.length) + (savedConfig.quizEvents.length) + (savedConfig.snakeEvents.length) + (savedConfig.minefieldEvents.length) + (savedConfig.circuitPuzzleEvents.length) + (savedConfig.networkCardEvents.length) + (savedConfig.memoryEvents.length))
-        const lostEnemies  = (sent.enemies?.length || 0) - savedConfig.enemies.length
         const lostItems    = (sent.nodeItems?.length || 0) - savedConfig.nodeItems.length
-        const totalLost = lostScenes + lostEvents + lostEnemies + lostItems
+        const totalLost = lostScenes + lostEvents + lostItems
 
         lastSavedConfigRef.current = JSON.stringify(savedConfig)
         setConfig(savedConfig)
@@ -993,10 +921,9 @@ export default function AdminPage() {
           const parts = [
             lostScenes  > 0 ? `${lostScenes} nodo(s)` : '',
             lostEvents  > 0 ? `${lostEvents} evento(s)` : '',
-            lostEnemies > 0 ? `${lostEnemies} enemigo(s)` : '',
             lostItems   > 0 ? `${lostItems} item(s)` : '',
           ].filter(Boolean).join(', ')
-          setMessage(`⚠️ Guardado OK pero se perdieron ${parts}. Causa probable: la clave del nodo no coincide. Revisa que todos los eventos/enemigos/items apunten a un nodo existente.`)
+          setMessage(`⚠️ Guardado OK pero se perdieron ${parts}. Causa probable: la clave del nodo no coincide. Revisa que todos los eventos/items apunten a un nodo existente.`)
         } else {
           setMessage('Guardado automatico. El juego ya recibio estos cambios.')
         }
@@ -1030,7 +957,6 @@ export default function AdminPage() {
         sceneKey: decision.sceneKey === oldKey ? nextKey : decision.sceneKey,
         nextSceneKey: decision.nextSceneKey === oldKey ? nextKey : decision.nextSceneKey,
       })),
-      enemies:             rk(prev.enemies),
       nodeItems:           rk(prev.nodeItems),
       storyEvents:         rk(prev.storyEvents),
       memoryEvents:        rk(prev.memoryEvents),
@@ -1049,13 +975,6 @@ export default function AdminPage() {
     setConfig(prev => ({
       ...prev,
       decisions: prev.decisions.map((decision, i) => i === index ? { ...decision, ...patch } : decision),
-    }))
-  }
-
-  const updateEnemy = (index: number, patch: Partial<EnemyConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      enemies: prev.enemies.map((enemy, i) => i === index ? { ...enemy, ...patch } : enemy),
     }))
   }
 
@@ -1104,7 +1023,6 @@ export default function AdminPage() {
       ...prev,
       scenes: prev.scenes.filter(scene => scene.key !== sceneKey),
       decisions: prev.decisions.filter(decision => decision.sceneKey !== sceneKey && decision.nextSceneKey !== sceneKey),
-      enemies: prev.enemies.filter(enemy => enemy.sceneKey !== sceneKey),
       nodeItems: prev.nodeItems.filter(item => item.sceneKey !== sceneKey),
       storyEvents: prev.storyEvents.filter(event => event.sceneKey !== sceneKey),
       memoryEvents: prev.memoryEvents.filter(event => event.sceneKey !== sceneKey),
@@ -1140,13 +1058,6 @@ export default function AdminPage() {
     setConfig(prev => ({
       ...prev,
       decisions: prev.decisions.filter((_, i) => i !== index),
-    }))
-  }
-
-  const deleteEnemyFromFlow = (index: number) => {
-    setConfig(prev => ({
-      ...prev,
-      enemies: prev.enemies.filter((_, i) => i !== index),
     }))
   }
 
@@ -1229,19 +1140,6 @@ export default function AdminPage() {
     setMessage(`Decision nueva creada desde el nodo ${sceneKey}. Completa el destino en la seccion 2.`)
   }
 
-  const addEnemyToNode = (sceneKey: string) => {
-    if (config.storyEvents.some(event => event.sceneKey === sceneKey) || config.memoryEvents.some(event => event.sceneKey === sceneKey)) {
-      setErrorPopup(`No se puede agregar un enemigo al nodo "${sceneKey}" porque ya tiene un evento de historia o duelo de memoria asignado.\n\nElimina ese evento primero y luego agrega el enemigo.`)
-      return
-    }
-    const count = config.enemies.filter(enemy => enemy.sceneKey === sceneKey).length + 1
-    setConfig(prev => ({
-      ...prev,
-      enemies: [...prev.enemies, { ...blankEnemy, sceneKey, key: `enemigo${count}`, name: `Enemigo ${count}` }],
-    }))
-    setMessage(`Enemigo nuevo agregado al nodo ${sceneKey}. Ajusta ataque, defensa y titulos en la seccion 3.`)
-  }
-
   const addItemToNode = (sceneKey: string) => {
     setConfig(prev => ({
       ...prev,
@@ -1259,8 +1157,8 @@ export default function AdminPage() {
   }
 
   const addStoryEventToNode = (sceneKey: string) => {
-    if (config.enemies.some(enemy => enemy.sceneKey === sceneKey) || config.memoryEvents.some(event => event.sceneKey === sceneKey)) {
-      setErrorPopup(`No se puede agregar un evento de historia al nodo "${sceneKey}".\n\nEse nodo ya tiene un ${config.enemies.some(e => e.sceneKey === sceneKey) ? 'enemigo' : 'duelo de memoria'} asignado. Elimina ese primero.`)
+    if (config.memoryEvents.some(event => event.sceneKey === sceneKey)) {
+      setErrorPopup(`No se puede agregar un evento de historia al nodo "${sceneKey}".\n\nEse nodo ya tiene un duelo de memoria asignado. Elimina ese primero.`)
       return
     }
     const count = config.storyEvents.filter(event => event.sceneKey === sceneKey).length + 1
@@ -1272,8 +1170,8 @@ export default function AdminPage() {
   }
 
   const addMemoryEventToNode = (sceneKey: string) => {
-    if (config.enemies.some(enemy => enemy.sceneKey === sceneKey) || config.storyEvents.some(event => event.sceneKey === sceneKey)) {
-      setErrorPopup(`No se puede agregar un duelo de memoria al nodo "${sceneKey}".\n\nEse nodo ya tiene un ${config.enemies.some(e => e.sceneKey === sceneKey) ? 'enemigo' : 'evento de historia'} asignado. Elimina ese primero.`)
+    if (config.storyEvents.some(event => event.sceneKey === sceneKey)) {
+      setErrorPopup(`No se puede agregar un duelo de memoria al nodo "${sceneKey}".\n\nEse nodo ya tiene un evento de historia asignado. Elimina ese primero.`)
       return
     }
     const count = config.memoryEvents.filter(event => event.sceneKey === sceneKey).length + 1
@@ -1547,9 +1445,6 @@ export default function AdminPage() {
   const selectedDecisions = config.decisions
     .map((decision, index) => ({ decision, index }))
     .filter(({ decision }) => decision.sceneKey === selectedSceneKey)
-  const selectedEnemies = config.enemies
-    .map((enemy, index) => ({ enemy, index }))
-    .filter(({ enemy }) => enemy.sceneKey === selectedSceneKey)
   const selectedItems = config.nodeItems
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => item.sceneKey === selectedSceneKey)
@@ -1579,14 +1474,6 @@ export default function AdminPage() {
   const selectedNetworkCardEvents = (config.networkCardEvents || [])
     .map((event, index) => ({ event, index }))
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
-
-  const allItemOptions = useMemo(() => [
-    { value: '', label: '-- Seleccionar item --' },
-    ...config.nodeItems.map(item => ({
-      value: item.name,
-      label: `${item.name} (${item.type}, +${item.power})`,
-    })),
-  ], [config.nodeItems])
 
   if (loading) {
     return (
@@ -1627,7 +1514,7 @@ export default function AdminPage() {
             <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-white">
               <span className="text-2xl">🗺️</span> Administrador de Historia
             </h1>
-            <p className="mt-0.5 text-sm text-slate-400">Crea nodos, conecta decisiones, coloca enemigos y objetos en cada parte del camino.</p>
+            <p className="mt-0.5 text-sm text-slate-400">Crea nodos, conecta decisiones, coloca objetos en cada parte del camino.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1856,87 +1743,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* ── Imágenes de combate ── */}
-        <div className="rounded-xl border border-rose-800/30 bg-slate-900/80 px-5 py-4 shadow-lg">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-rose-300">
-            🖼️ Imágenes de combate
-          </h2>
-          <p className="mb-4 text-xs text-slate-400">Imagenes que se muestran al iniciar combate, al ganar y al perder. Si las dejas vacías se usan las imágenes por defecto del juego.</p>
-          <div className="grid gap-4 md:grid-cols-3">
-            {(
-              [
-                { key: 'combatIntroImageUrl',   label: '⚔️ Inicio de combate', accent: 'amber',   placeholder: 'https://... imagen de inicio' },
-                { key: 'combatVictoryImageUrl', label: '🏆 Victoria',          accent: 'emerald', placeholder: 'https://... imagen de victoria' },
-                { key: 'combatDefeatImageUrl',  label: '💀 Derrota',           accent: 'rose',     placeholder: 'https://... imagen de derrota' },
-              ] as const
-            ).map(({ key, label, accent, placeholder }) => {
-              const currentUrl = (config as any)[key] as string | undefined
-              const uploading  = !!audioUploading[key]
-              const inputRef   = React.createRef<HTMLInputElement>()
-              return (
-                <div key={key}>
-                  <label className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide text-${accent}-400`}>{label}</label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={inputRef}
-                    className="hidden"
-                    onChange={async e => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      setAudioUploading(prev => ({ ...prev, [key]: true }))
-                      try {
-                        const uploaded = await uploadStoryAsset(file)
-                        setConfig(prev => ({ ...prev, [key]: uploaded.url }))
-                      } catch (err: any) {
-                        setMessage(`Error subiendo imagen: ${err.message}`)
-                      } finally {
-                        setAudioUploading(prev => ({ ...prev, [key]: false }))
-                        e.target.value = ''
-                      }
-                    }}
-                  />
-
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={currentUrl || ''}
-                      onChange={e => setConfig(prev => ({ ...prev, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className={`min-w-0 flex-1 rounded border border-${accent}-700/40 bg-slate-800 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-${accent}-500/60 focus:outline-none`}
-                    />
-                    <button
-                      type="button"
-                      disabled={uploading}
-                      onClick={() => inputRef.current?.click()}
-                      className={`shrink-0 rounded border border-${accent}-600/50 bg-${accent}-900/60 px-2.5 py-2 text-xs font-semibold text-${accent}-300 transition hover:bg-${accent}-800/60 disabled:cursor-not-allowed disabled:opacity-50`}
-                      title="Buscar archivo en tu PC"
-                    >
-                      {uploading ? '⏳' : '📁'}
-                    </button>
-                    {currentUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setConfig(prev => ({ ...prev, [key]: '' }))}
-                        className="shrink-0 rounded border border-slate-600/40 bg-slate-800 px-2 py-2 text-xs text-slate-400 transition hover:text-rose-400"
-                        title="Quitar imagen (usar la por defecto)"
-                      >✕</button>
-                    )}
-                  </div>
-
-                  {currentUrl && !uploading && (
-                    <img key={currentUrl} src={currentUrl} className="mt-2 h-20 w-full rounded object-cover" />
-                  )}
-                  {uploading && (
-                    <p className={`mt-1 text-[10px] text-${accent}-400 animate-pulse`}>Subiendo archivo...</p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
         {message && (
           <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow ${
             message.toLowerCase().includes('error') || message.toLowerCase().includes('problema')
@@ -1955,7 +1761,6 @@ export default function AdminPage() {
           selectedSceneKey={selectedSceneKey}
           onSelectScene={setSelectedSceneKey}
           onAddDecision={addDecisionFromNode}
-          onAddEnemy={addEnemyToNode}
           onAddMemory={addMemoryEventToNode}
           onAddItem={addItemToNode}
           onDropNode={createNodeFromFlow}
@@ -1964,7 +1769,6 @@ export default function AdminPage() {
           onDeleteScene={deleteSceneFromFlow}
           onConnectScenes={connectScenesInFlow}
           onDeleteDecision={deleteDecisionFromFlow}
-          onDeleteEnemy={deleteEnemyFromFlow}
           onDeleteMemory={deleteMemoryEventFromFlow}
           onDeleteItem={deleteItemFromFlow}
           onAutoArrange={autoArrangeFlow}
@@ -2256,24 +2060,6 @@ export default function AdminPage() {
                         </div>
                       )
                     })
-                  }
-                </div>
-
-                {/* Enemigos de combate regular */}
-                <div className="rounded border border-rose-400/25 bg-rose-950/15 p-3">
-                  <div className="mb-2 font-semibold text-rose-200">⚔️ Combate (enemigos)</div>
-                  {selectedEnemies.length === 0
-                    ? <div className="text-xs text-slate-400">Sin enemigos en este nodo.</div>
-                    : selectedEnemies.map(({ enemy, index }) => (
-                      <div key={`quick-enemy-${index}`} className="relative mb-2 rounded bg-slate-900 p-2">
-                        <button onClick={() => setConfig(prev => ({ ...prev, enemies: prev.enemies.filter((_, i) => i !== index) }))} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-red-600/80 text-[10px] font-bold text-white hover:bg-red-600" title="Eliminar">✕</button>
-                        <div className="grid gap-2 pr-6 md:grid-cols-3">
-                          <LabeledInput label="Nombre" value={enemy.name} onChange={value => updateEnemy(index, { name: value })} placeholder="Robot Digital" />
-                          <LabeledNumber label="Ataque" value={enemy.attack} onChange={value => updateEnemy(index, { attack: value })} />
-                          <LabeledNumber label="Defensa (HP)" value={enemy.defense} onChange={value => updateEnemy(index, { defense: value })} />
-                        </div>
-                      </div>
-                    ))
                   }
                 </div>
 
@@ -2845,53 +2631,6 @@ export default function AdminPage() {
           ))}
         </AdminList>
 
-        <AdminList title="3. Enemigos por nodo" icon={<Shield className="h-5 w-5 text-rose-400" />} onAdd={() => setConfig(prev => ({ ...prev, enemies: [...prev.enemies, { ...blankEnemy }] }))}>
-          {config.enemies.map((enemy, index) => (
-            <div key={index} className="rounded-xl border border-rose-900/40 bg-slate-950/60 p-4 shadow">
-              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-rose-300">
-                <Shield className="h-4 w-4" />
-                {enemy.name || '(sin nombre)'} - nodo {enemy.sceneKey || '?'}
-              </div>
-              <div className="grid gap-2 md:grid-cols-4">
-                <LabeledInput label="Clave enemigo" value={enemy.key} onChange={value => updateEnemy(index, { key: value })} placeholder="robot" />
-                <LabeledSelect label="Aparece en nodo" value={enemy.sceneKey} onChange={value => updateEnemy(index, { sceneKey: value })} options={nodeOptions} />
-                <LabeledInput label="Nombre" value={enemy.name} onChange={value => updateEnemy(index, { name: value })} placeholder="Robot Digital" />
-                <LabeledSelect label="Arma que lo mata" value={enemy.weakWeapon} onChange={value => updateEnemy(index, { weakWeapon: value })} options={allItemOptions} />
-                <label className="space-y-1 text-xs font-semibold text-slate-300">
-                  <span>Premio al vencerlo</span>
-                  <select value={enemy.rewardItemName || ''} onChange={e => {
-                    const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
-                    updateEnemy(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
-                  }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
-                    <option value="">-- Sin premio --</option>
-                    <optgroup label="Equipamiento">
-                          {config.equipmentCatalog.map(it => (
-                            <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                          ))}
-                        </optgroup>
-                    <optgroup label="Pociones">
-                      {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
-                        <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </label>
-                <LabeledNumber label="Ataque" value={enemy.attack} onChange={value => updateEnemy(index, { attack: value })} />
-                <LabeledNumber label="Defensa / vida" value={enemy.defense} onChange={value => updateEnemy(index, { defense: value })} />
-                <LabeledInput label="Título si gana jugador" value={enemy.victoryTitle} onChange={value => updateEnemy(index, { victoryTitle: value })} placeholder="Robot Digital destruido" />
-                <LabeledInput label="Título si pierde jugador" value={enemy.defeatTitle} onChange={value => updateEnemy(index, { defeatTitle: value })} placeholder="Sistema comprometido" />
-              </div>
-              <label className="mt-2 block space-y-1 text-xs font-semibold text-slate-300">
-                <span>Texto cuando el enemigo mata al jugador</span>
-                <textarea value={enemy.defeatDescription} onChange={e => updateEnemy(index, { defeatDescription: e.target.value })} className="min-h-20 w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:border-cyan-500/60 focus:outline-none" />
-              </label>
-              <button onClick={() => setConfig(prev => ({ ...prev, enemies: prev.enemies.filter((_, i) => i !== index) }))} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-600/80 px-3 py-1.5 text-sm font-semibold shadow transition hover:bg-red-600">
-                <Trash2 className="h-4 w-4" /> Eliminar enemigo
-              </button>
-            </div>
-          ))}
-        </AdminList>
-
         {/* Catalogo de Equipamiento */}
         <section className="rounded-xl border border-amber-700/40 bg-amber-950/10 p-5 shadow-lg">
           <h2 className="mb-1 inline-flex items-center gap-2 text-xl font-bold text-white"><PackagePlus className="h-5 w-5 text-amber-300" /> Catálogo de Equipamiento</h2>
@@ -2914,7 +2653,7 @@ export default function AdminPage() {
         </section>
 
         {/* 4a. Equipamiento */}
-        <AdminList title="4a. Equipamiento por camino" icon={<PackagePlus className="h-5 w-5 text-amber-300" />} onAdd={() => setConfig(prev => ({ ...prev, nodeItems: [...prev.nodeItems, catalogToNodeItem(prev.equipmentCatalog[0], '')] }))}>
+        <AdminList title="3a. Equipamiento por camino" icon={<PackagePlus className="h-5 w-5 text-amber-300" />} onAdd={() => setConfig(prev => ({ ...prev, nodeItems: [...prev.nodeItems, catalogToNodeItem(prev.equipmentCatalog[0], '')] }))}>
           {config.nodeItems.filter(item => item.type !== 'potion' && item.type !== 'consumable').map((item) => {
             const index = config.nodeItems.indexOf(item)
             const cat = config.equipmentCatalog.find(c => c.slot === getVisualType(item.type, item.slot)) || config.equipmentCatalog[0]
@@ -2937,7 +2676,7 @@ export default function AdminPage() {
         </AdminList>
 
         {/* 4b. Pociones */}
-        <AdminList title="4b. Pociones por camino" icon={<PackagePlus className="h-5 w-5 text-pink-400" />} onAdd={() => setConfig(prev => ({ ...prev, nodeItems: [...prev.nodeItems, { ...blankPotion }] }))}>
+        <AdminList title="3b. Pociones por camino" icon={<PackagePlus className="h-5 w-5 text-pink-400" />} onAdd={() => setConfig(prev => ({ ...prev, nodeItems: [...prev.nodeItems, { ...blankPotion }] }))}>
           {config.nodeItems.filter(item => item.type === 'potion' || item.type === 'consumable').map((item) => {
             const index = config.nodeItems.indexOf(item)
             const isSpecial = item.type === 'consumable'
@@ -2984,7 +2723,7 @@ export default function AdminPage() {
           })}
         </AdminList>
 
-        <AdminList title="5. Encuentros memoria 8-bit" icon={<Skull className="h-5 w-5 text-cyan-300" />} onAdd={() => setConfig(prev => ({ ...prev, memoryEvents: [...prev.memoryEvents, { ...blankMemoryEvent }] }))}>
+        <AdminList title="4. Encuentros memoria 8-bit" icon={<Skull className="h-5 w-5 text-cyan-300" />} onAdd={() => setConfig(prev => ({ ...prev, memoryEvents: [...prev.memoryEvents, { ...blankMemoryEvent }] }))}>
           {config.memoryEvents.map((event, index) => (
             <div key={index} className="rounded border border-white/10 bg-slate-900 p-4">
               <div className="mb-3 text-sm font-bold text-cyan-200">
@@ -3018,7 +2757,7 @@ export default function AdminPage() {
           ))}
         </AdminList>
 
-        <AdminList title="6. Finales de historia" icon={<Flag className="h-5 w-5 text-emerald-300" />} onAdd={() => setConfig(prev => ({ ...prev, endings: [...prev.endings, { sceneKey: '', title: '', description: '' }] }))}>
+        <AdminList title="5. Finales de historia" icon={<Flag className="h-5 w-5 text-emerald-300" />} onAdd={() => setConfig(prev => ({ ...prev, endings: [...prev.endings, { sceneKey: '', title: '', description: '' }] }))}>
           {config.endings.map((ending, index) => (
             <div key={index} className="rounded border border-white/10 bg-slate-900 p-4">
               <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
@@ -3034,7 +2773,7 @@ export default function AdminPage() {
           ))}
         </AdminList>
 
-        <AdminList title="7. Eventos de dos opciones" icon={<Skull className="h-5 w-5 text-fuchsia-300" />} onAdd={() => setConfig(prev => ({ ...prev, storyEvents: [...prev.storyEvents, { ...blankStoryEvent }] }))}>
+        <AdminList title="6. Eventos de dos opciones" icon={<Skull className="h-5 w-5 text-fuchsia-300" />} onAdd={() => setConfig(prev => ({ ...prev, storyEvents: [...prev.storyEvents, { ...blankStoryEvent }] }))}>
           {config.storyEvents.map((event, index) => (
             <div key={index} className="rounded border border-white/10 bg-slate-900 p-4">
               <div className="mb-3 text-sm font-bold text-fuchsia-200">
@@ -3094,7 +2833,7 @@ export default function AdminPage() {
 
         <div className="rounded border border-slate-700 bg-slate-900 p-4 text-sm text-white">
           <div className="mb-1 inline-flex items-center gap-2 font-bold"><Skull className="h-4 w-4 text-rose-300" /> Ejemplo rapido</div>
-          <p>Nodo 1: Servidor en la nube. Decision: "Avanzar" hacia 1.1. Enemigo: clave "robot", aparece en 1.1, ataque 18, defensa 100, titulo ganador "Robot Digital destruido", titulo derrota "Sistema comprometido".</p>
+          <p>Nodo 1: Servidor en la nube. Decision: "Avanzar" hacia 1.1. Nodo 1.1: agrega un objeto, evento de dos opciones o duelo de memoria segun lo que necesite la historia.</p>
         </div>
       </div>
     </div>
@@ -3354,7 +3093,6 @@ function FlowDiagram({
   selectedSceneKey,
   onSelectScene,
   onAddDecision,
-  onAddEnemy,
   onAddMemory,
   onAddItem,
   onDropNode,
@@ -3363,7 +3101,6 @@ function FlowDiagram({
   onDeleteScene,
   onConnectScenes,
   onDeleteDecision,
-  onDeleteEnemy,
   onDeleteMemory,
   onDeleteItem,
   onAutoArrange,
@@ -3372,7 +3109,6 @@ function FlowDiagram({
   selectedSceneKey: string
   onSelectScene: (sceneKey: string) => void
   onAddDecision: (sceneKey: string) => void
-  onAddEnemy: (sceneKey: string) => void
   onAddMemory: (sceneKey: string) => void
   onAddItem: (sceneKey: string) => void
   onDropNode: (x: number, y: number, flowPage?: number) => void
@@ -3381,7 +3117,6 @@ function FlowDiagram({
   onDeleteScene: (sceneKey: string) => void
   onConnectScenes: (fromKey: string, toKey: string) => void
   onDeleteDecision: (index: number) => void
-  onDeleteEnemy: (index: number) => void
   onDeleteMemory: (index: number) => void
   onDeleteItem: (index: number) => void
   onAutoArrange: () => void
@@ -3459,7 +3194,6 @@ function FlowDiagram({
     const type = readDropType(event)
     setDragOverScene('')
     if (type === 'decision') onDropDecision(sceneKey)
-    if (type === 'enemy') onAddEnemy(sceneKey)
     if (type === 'memory') onAddMemory(sceneKey)
     if (type === 'item') onAddItem(sceneKey)
   }
@@ -3473,7 +3207,6 @@ function FlowDiagram({
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-white">
           <span className="rounded bg-sky-700 px-2 py-1">Decision</span>
-          <span className="rounded bg-rose-700 px-2 py-1">Enemigo</span>
           <span className="rounded bg-cyan-700 px-2 py-1">Memoria</span>
           <span className="rounded bg-amber-700 px-2 py-1">Objeto</span>
           <span className="rounded bg-emerald-700 px-2 py-1">Final</span>
@@ -3489,9 +3222,6 @@ function FlowDiagram({
         </button>
         <button draggable onDragStart={event => handlePaletteDrag(event, 'decision')} className="rounded bg-sky-700 px-3 py-2 font-semibold hover:bg-sky-800">
           Arrastrar decision
-        </button>
-        <button draggable onDragStart={event => handlePaletteDrag(event, 'enemy')} className="rounded bg-rose-700 px-3 py-2 font-semibold hover:bg-rose-800">
-          Arrastrar enemigo
         </button>
         <button draggable onDragStart={event => handlePaletteDrag(event, 'memory')} className="rounded bg-cyan-700 px-3 py-2 font-semibold hover:bg-cyan-800">
           Arrastrar memoria
@@ -3514,7 +3244,7 @@ function FlowDiagram({
           <button onClick={() => setFlowPage(page => Math.min(pageCount + 1, page + 1))} className="rounded bg-slate-700 px-2 py-1 hover:bg-slate-600">›</button>
           <button onClick={() => setFlowPage(pageCount + 1)} className="rounded bg-cyan-700 px-2 py-1 hover:bg-cyan-800">Nueva pag.</button>
         </div>
-        <span className="basis-full self-center text-xs text-white">Mueve nodos arrastrando el cuadro. Crea flechas arrastrando el circulo → de un nodo hacia otro. Suelta nodo en el fondo; enemigo/objeto encima de un nodo.</span>
+        <span className="basis-full self-center text-xs text-white">Mueve nodos arrastrando el cuadro. Crea flechas arrastrando el circulo → de un nodo hacia otro. Suelta nodo en el fondo; objeto encima de un nodo.</span>
       </div>
 
       {config.scenes.length === 0 && (
@@ -3624,7 +3354,6 @@ function FlowDiagram({
             </svg>
 
             {layout.map(({ scene, x, y }) => {
-              const enemies = config.enemies.filter(enemy => enemy.sceneKey === scene.key)
               const memories = config.memoryEvents.filter(event => event.sceneKey === scene.key)
               const items = config.nodeItems.filter(item => item.sceneKey === scene.key)
               const endings = config.endings.filter(ending => ending.sceneKey === scene.key)
@@ -3648,7 +3377,7 @@ function FlowDiagram({
                   }}
                   onDragOver={event => {
                     const type = readDropType(event)
-                    if (connectFrom || pendingConnectFrom || type === 'decision' || type === 'enemy' || type === 'memory' || type === 'item') {
+                    if (connectFrom || pendingConnectFrom || type === 'decision' || type === 'memory' || type === 'item') {
                       event.preventDefault()
                       event.stopPropagation()
                       setDragOverScene(scene.key)
@@ -3739,19 +3468,12 @@ function FlowDiagram({
                       </span>
                     )}
                     <span className="rounded bg-sky-700 px-1.5 py-0.5">{outgoing.length} dec.</span>
-                    {enemies.length > 0 && <span className="rounded bg-rose-700 px-1.5 py-0.5">{enemies.length} ene.</span>}
                     {memories.length > 0 && <span className="rounded bg-cyan-700 px-1.5 py-0.5">{memories.length} mem.</span>}
                     {items.length > 0 && <span className="rounded bg-amber-700 px-1.5 py-0.5">{items.length} obj.</span>}
                     {(scene.isEnding || endings.length > 0) && <span className="rounded bg-emerald-700 px-1.5 py-0.5">final</span>}
                   </div>
-                  {(enemies.length > 0 || memories.length > 0 || items.length > 0) && (
+                  {(memories.length > 0 || items.length > 0) && (
                     <div className="mt-1.5 space-y-1 text-[10px]">
-                      {config.enemies.map((enemy, enemyIndex) => enemy.sceneKey === scene.key ? (
-                        <div key={`enemy-${enemyIndex}`} className="flex items-center justify-between rounded bg-rose-950/80 px-2 py-1">
-                          <span className="truncate">{enemy.name || enemy.key}</span>
-                          <button onClick={() => onDeleteEnemy(enemyIndex)} className="ml-1 font-bold text-rose-200">x</button>
-                        </div>
-                      ) : null)}
                       {config.memoryEvents.map((event, memoryIndex) => event.sceneKey === scene.key ? (
                         <div key={`memory-${memoryIndex}`} className="flex items-center justify-between rounded bg-cyan-950/80 px-2 py-1">
                           <span className="truncate">{event.title || event.key}</span>
@@ -3766,9 +3488,8 @@ function FlowDiagram({
                       ) : null)}
                     </div>
                   )}
-                  <div className="mt-2 grid grid-cols-4 gap-1">
+                  <div className="mt-2 grid grid-cols-3 gap-1">
                     <button onClick={() => onAddDecision(scene.key)} className="rounded bg-sky-700 px-1 py-0.5 text-[10px] hover:bg-sky-800">Dec.</button>
-                    <button onClick={() => onAddEnemy(scene.key)} className="rounded bg-rose-700 px-1 py-0.5 text-[10px] hover:bg-rose-800">Ene.</button>
                     <button onClick={() => onAddMemory(scene.key)} className="rounded bg-cyan-700 px-1 py-0.5 text-[10px] hover:bg-cyan-800">Mem.</button>
                     <button onClick={() => onAddItem(scene.key)} className="rounded bg-amber-700 px-1 py-0.5 text-[10px] hover:bg-amber-800">Obj.</button>
                   </div>

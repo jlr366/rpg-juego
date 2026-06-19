@@ -22,18 +22,11 @@ interface GameContextType {
   withdrawPotionFromBox: (itemId: string) => Promise<void>
   acquireItem: (item: Item) => Promise<{ ok: boolean; error?: string }>
 
-  combat: any | null
-  startCombat: (enemy: any) => void
-  resolveCombatRound: () => void
-  autoWinCombat: () => void
-  fleeCombat: () => void
-
   injure: (damage: number, step: string) => void
   storyKill: (message: string, step: string) => void
   resetGame: () => void
   reviveFromDeath: () => void
   lastCombatResult: string | null
-  lastEnemyName: string | null
   lastEventTitle: string | null
 
   dropInventoryToScene: (sceneKey: string) => void
@@ -51,9 +44,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [equipment, setEquipment] = useState<Record<string, Item | null>>({})
   const [inventory, setInventory] = useState<Item[]>([])
   const [log, setLog] = useState<string[]>([])
-  const [combat, setCombat] = useState(null)
   const [lastCombatResult, setLastCombatResult] = useState<string | null>(null)
-  const [lastEnemyName, setLastEnemyName] = useState<string | null>(null)
   const [lastEventTitle, setLastEventTitle] = useState<string | null>(null)
 
   // ✅ CARGA INICIAL (FIX)
@@ -103,7 +94,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user])
 
-  const handleDeath = useCallback(async (enemyKey?: string) => {
+  const handleDeath = useCallback(async () => {
     if (!user) return
 
     try {
@@ -111,7 +102,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ enemyKey }),
+        body: JSON.stringify({}),
       })
 
       if (response.ok) {
@@ -127,29 +118,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error handling death:', error)
       setHealth(0)
       setEquipment({})
-    }
-  }, [user])
-
-  const claimEnemyLoot = useCallback(async (enemyKey?: string) => {
-    if (!user || !enemyKey) return
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/characters/${user.id}/claim-enemy-loot`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ enemyKey }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setInventory(data.inventory || [])
-        if (data.claimed > 0) {
-          setLog(prev => [...prev, `Recuperaste ${data.claimed} botin(es) del enemigo.`])
-        }
-      }
-    } catch (error) {
-      console.error('Error claiming enemy loot:', error)
     }
   }, [user])
 
@@ -280,87 +248,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user])
 
-  // ✅ COMBATE
-  const startCombat = useCallback((enemy: any) => {
-    setCombat(enemy)
-  }, [])
-
-  const resolveCombatRound = useCallback(() => {
-    if (!combat) return
-
-    const equippedWeapon = equipment.weapon?.name?.toLowerCase() || ''
-    const weakWeapon = typeof combat.weakWeapon === 'string' ? combat.weakWeapon.toLowerCase().trim() : ''
-    if (weakWeapon && equippedWeapon.includes(weakWeapon)) {
-      setLastCombatResult('enemy_victory')
-      setLastEnemyName(combat.enemyName || 'enemigo')
-      setLastEventTitle(combat.victoryTitle || `Ganador de ${combat.enemyName || 'enemigo'}`)
-      setLog(prev => [...prev, `${equipment.weapon?.name} derrota de un golpe a ${combat.enemyName}.`])
-      claimEnemyLoot(combat.enemyKey)
-      setCombat(null)
-      return
-    }
-
-    // Stat bonuses from equipment
-    const weaponPower = equipment.weapon?.power || 0
-    const armorPower =
-      (equipment.head?.power   || 0) +
-      (equipment.chest?.power  || 0) +
-      (equipment.legs?.power   || 0) +
-      (equipment.ring?.power   || 0) +
-      (equipment.boots?.power  || 0)
-    const defenseReduction = Math.floor(armorPower / 2)
-
-    // Intercambio directo de golpes: tu ataque primero, y si el enemigo
-    // sobrevive, te devuelve el golpe. Sin tiradas ni azar enfrentado.
-    const baseDmg = Math.floor(Math.random() * 15) + 5
-    const damage = baseDmg + weaponPower
-    const newEnemyHealth = combat.enemyHealth - damage
-    const weaponNote = weaponPower > 0 ? ` (+${weaponPower} arma)` : ''
-
-    if (newEnemyHealth <= 0) {
-      setLastCombatResult('enemy_victory')
-      setLastEnemyName(combat.enemyName || 'enemigo')
-      setLastEventTitle(combat.victoryTitle || `Ganador de ${combat.enemyName || 'enemigo'}`)
-      setLog(prev => [...prev, `¡Derrotaste al ${combat.enemyName}! Daño final: ${damage}${weaponNote}`])
-      claimEnemyLoot(combat.enemyKey)
-      setCombat(null)
-      return
-    }
-
-    const rawDamage =
-      Math.floor(Math.random() * (combat.enemyDamageMax - combat.enemyDamageMin + 1)) +
-      combat.enemyDamageMin
-    const enemyDamage = Math.max(1, rawDamage - defenseReduction)
-    const defNote = defenseReduction > 0 ? ` (bloqueado ${defenseReduction} por armadura)` : ''
-    const newHealth = Math.max(0, health - enemyDamage)
-    setHealth(newHealth)
-    saveHealth(newHealth)
-
-    if (newHealth <= 0) {
-      setLastEnemyName(combat.enemyName || 'enemigo')
-      setLastCombatResult('enemy_defeat')
-      setLastEventTitle(combat.defeatTitle || `Comida de ${combat.enemyName || 'enemigo'}`)
-      setLog(prev => [...prev, `Golpeas a ${combat.enemyName} por ${damage}${weaponNote}, pero ${combat.enemyName || 'el enemigo'} te mata. Daño: ${enemyDamage}${defNote}`])
-      handleDeath(combat.enemyKey)
-      setCombat(null)
-    } else {
-      setLog(prev => [...prev, `Golpeas a ${combat.enemyName} por ${damage}${weaponNote}. Vida enemigo: ${newEnemyHealth}. ${combat.enemyName} te golpea por ${enemyDamage}${defNote}. Tu vida: ${newHealth}`])
-      setCombat({ ...combat, enemyHealth: newEnemyHealth })
-    }
-  }, [claimEnemyLoot, combat, equipment, health, handleDeath, saveHealth])
-
-  const autoWinCombat = useCallback(() => {
-    if (!combat) return
-    setLastCombatResult('enemy_victory')
-    setLastEnemyName(combat.enemyName || 'enemigo')
-    setLastEventTitle(combat.victoryTitle || `Victoria sobre ${combat.enemyName || 'enemigo'}`)
-    setLog(prev => [...prev, `⚡ Poción Especial: ${combat.enemyName} derrotado instantáneamente.`])
-    claimEnemyLoot(combat.enemyKey)
-    setCombat(null)
-  }, [claimEnemyLoot, combat])
-
-  const fleeCombat = useCallback(() => setCombat(null), [])
-
   const injure = useCallback((damage: number) => {
     setHealth(prev => {
       const nextHealth = Math.max(0, prev - damage)
@@ -377,7 +264,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const storyKill = useCallback((message: string) => {
     setHealth(0)
     handleDeath()
-    setLastEnemyName(null)
     setLastCombatResult('story_death')
     setLastEventTitle('Has muerto')
     setLog(prev => [...prev, message])
@@ -389,7 +275,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEquipment({})
     setInventory([])
     setLog([])
-    setLastEnemyName(null)
     setLastCombatResult(null)
     setLastEventTitle(null)
 
@@ -458,7 +343,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const revivedHealth = Math.floor(maxHealth * 0.5)
     setHealth(revivedHealth)
     saveHealth(revivedHealth)
-    setLastEnemyName(null)
     setLastCombatResult(null)
     setLastEventTitle(null)
   }, [maxHealth, saveHealth])
@@ -484,17 +368,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         storePotionInBox,
         withdrawPotionFromBox,
         acquireItem,
-        combat,
-        startCombat,
-        resolveCombatRound,
-        autoWinCombat,
-        fleeCombat,
         injure,
         storyKill,
         resetGame,
         reviveFromDeath,
         lastCombatResult,
-        lastEnemyName,
         lastEventTitle,
         dropInventoryToScene,
         getSceneItems,

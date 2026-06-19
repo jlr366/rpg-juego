@@ -32,11 +32,6 @@ import imgMemCF      from '../assets/Architecture-Service-Icons_07312025/Arch_Ne
 import imgMemAPI     from '../assets/Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/64/Arch_Amazon-API-Gateway_64.png'
 import imgMemBedrock from '../assets/Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/64/Arch_Amazon-Bedrock_64.png'
 
-// -- Combat splash images -------------------------------------------------------
-import imgCombatIntro   from '../assets/imagenes/jungla_combate.webp'
-import imgCombatVictory from '../assets/imagenes/explosion_final.webp'
-import imgCombatDefeat  from '../assets/personaje/operador_dentro.png'
-
 interface StorySceneConfig {
   key: string
   title: string
@@ -53,18 +48,6 @@ interface StoryDecisionConfig {
   sceneKey: string
   label: string
   nextSceneKey: string
-}
-
-interface StoryEnemyConfig {
-  key: string
-  sceneKey: string
-  name: string
-  attack: number
-  defense: number
-  weakWeapon?: string
-  victoryTitle?: string
-  defeatTitle?: string
-  defeatDescription?: string
 }
 
 interface StoryNodeItemConfig {
@@ -134,11 +117,9 @@ export type MemoryDuelResult = 'win' | 'loss' | 'draw'
 interface StoryConfig {
   scenes: StorySceneConfig[]
   decisions: StoryDecisionConfig[]
-  enemies?: StoryEnemyConfig[]
   nodeItems?: StoryNodeItemConfig[]
   storyEvents?: StoryChoiceEventConfig[]
   memoryEvents?: MemoryEventConfig[]
-  deathTitles?: Array<{ enemyKey: string; title: string; description: string }>
   endings?: Array<{ sceneKey: string; title: string; description: string }>
   mapLocations?: Array<{ key: string; name: string; x: number; y: number; icon: string }>
   runnerEvents?: RunnerEventConfig[]
@@ -266,17 +247,11 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const { user } = useAuth()
   const {
     acquireItem,
-    combat,
-    startWolfEncounter,
-    resolveCombatRound,
-    fleeCombat,
     health,
     maxHealth,
     lastCombatResult,
-    lastEnemyName,
     resetGame,
     reviveFromDeath,
-    startCombat,
     storyKill,
     injure,
     lastEventTitle,
@@ -286,7 +261,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     inventory,
     dropItem,
     log,
-    autoWinCombat,
     equipment,
   } = useGame()
   const effectiveInjure = demoMode ? (() => {}) : injure
@@ -314,7 +288,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     return
   }
 
-  const { setScene, playCombatAlert, mute, toggleMute, volume, setVolume } = useMusic()
+  const { setScene, mute, toggleMute, volume, setVolume } = useMusic()
 
   /**
    * Sequence state.
@@ -323,21 +297,13 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [currentSceneKey, setCurrentSceneKey] = useState<string>('')
   const [nodeStage, setNodeStage] = useState<'initial' | 'house_inside' | 'resolved'>('initial')
-  const [pendingTroll, setPendingTroll] = useState<boolean>(false)
   const [pendingAdvance, setPendingAdvance] = useState<number | null>(null)
-  const [combatSplash, setCombatSplash] = useState<'intro' | 'victory' | 'defeat' | null>(null)
-  const splashTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const prevCombatRef = React.useRef<boolean>(false)
   const prevLastResultRef = React.useRef<string | null>(null)
-  const [pendingConfiguredNext, setPendingConfiguredNext] = useState<string | null>(null)
-  const [blockedDecision, setBlockedDecision] = useState<StoryDecisionConfig | null>(null)
 
   const [step, setStep] = useState<MapStep>('camino')
   const [storyConfig, setStoryConfig] = useState<StoryConfig | null>(null)
   const [collectedNodeItems, setCollectedNodeItems] = useState<Record<string, boolean>>({})
   const [openedChests, setOpenedChests] = useState<Record<string, boolean>>({})
-  const [resolvedConfiguredEnemies, setResolvedConfiguredEnemies] = useState<Record<string, boolean>>({})
-  const [fledConfiguredEnemies, setFledConfiguredEnemies] = useState<Record<string, boolean>>({})
   const [resolvedStoryEvents, setResolvedStoryEvents] = useState<Record<string, boolean>>({})
   const [resolvedMemoryEvents, setResolvedMemoryEvents] = useState<Record<string, boolean>>({})
   const [eventResultText, setEventResultText] = useState('')
@@ -361,13 +327,10 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const [pendingGameReward, setPendingGameReward] = useState<{ name: string; type: string; slot?: string; power: number; rarity?: string; description?: string } | null>(null)
   const [gameResultPending, setGameResultPending] = useState(false)
   const [lastPenaltyHP, setLastPenaltyHP] = useState(0)
-  const specialPotionEndRef = useRef<number>(0)
-  const [specialPotionSecs, setSpecialPotionSecs] = useState(0)
   const nodeAudioRef   = useRef<HTMLAudioElement | null>(null)
   const globalAudioRef = useRef<HTMLAudioElement | null>(null)
   const transientAudioRef = useRef<HTMLAudioElement | null>(null)
   const lastStoryUpdateRef = useRef('')
-  const activeConfiguredEnemyKeyRef = useRef('')
   const didRestoreRef = useRef(false)
 
   const sessionSaveKey = user ? `rpg-adventure-current-${user.id}` : ''
@@ -398,7 +361,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
           // Clear resolved state so events appear fresh after each admin save
           setResolvedStoryEvents({})
           setResolvedMemoryEvents({})
-          setResolvedConfiguredEnemies({})
           setNodeStage('initial')
           setEventResultText('')
           setPendingStoryFeedback(null)
@@ -412,19 +374,13 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
           setStep('camino')
           setNodesVisited([false, false, false, false])
           setNodeStage('initial')
-          setPendingTroll(false)
           setPendingAdvance(null)
-          setPendingConfiguredNext(null)
-          setBlockedDecision(null)
           setCollectedNodeItems({})
           setOpenedChests({})
-          setResolvedConfiguredEnemies({})
-          setFledConfiguredEnemies({})
           setResolvedStoryEvents({})
           setResolvedMemoryEvents({})
           setEventResultText('')
           setActiveMemoryEvent(null)
-          activeConfiguredEnemyKeyRef.current = ''
         } else if (!currentSceneKey || !config.scenes.some((scene: StorySceneConfig) => scene.key === currentSceneKey)) {
           setCurrentSceneKey(config.scenes[0].key)
         }
@@ -467,12 +423,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
    */
   const [pinnedTitle, setPinnedTitle] = useState<string | null>(null)
 
-  /**
-   * State: showVictoryAnim
-   * Temporary visual feedback when the player reclaims a scene (enemy_victory).
-   */
-  const [showVictoryAnim, setShowVictoryAnim] = useState<boolean>(false)
-
   useEffect(() => {
     const keys: MapStep[] = ['camino', 'bosque', 'arbustos', 'claroLobos']
     const knownStep = keys.includes(currentSceneKey as MapStep)
@@ -489,46 +439,23 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   }, [currentIndex, currentSceneKey, setScene])
 
   useEffect(() => {
-    if (combat && combat.inCombat) {
-      playCombatAlert()
-      setScene('combat')
-    } else {
-      const t = setTimeout(() => {
-        const mapping: Record<MapStep, 'camino' | 'bosque' | 'arbustos' | 'claroLobos'> = {
-          camino: 'camino',
-          bosque: 'bosque',
-          arbustos: 'arbustos',
-          claroLobos: 'claroLobos',
-        }
-        setScene(mapping[step])
-      }, 400)
-      return () => clearTimeout(t)
-    }
-  }, [combat, playCombatAlert, setScene, step])
+    const t = setTimeout(() => {
+      const mapping: Record<MapStep, 'camino' | 'bosque' | 'arbustos' | 'claroLobos'> = {
+        camino: 'camino',
+        bosque: 'bosque',
+        arbustos: 'arbustos',
+        claroLobos: 'claroLobos',
+      }
+      setScene(mapping[step])
+    }, 400)
+    return () => clearTimeout(t)
+  }, [setScene, step])
 
-  // -- Combat splash: intro when combat starts --------------------------------
-  useEffect(() => {
-    const nowInCombat = !!combat
-    if (nowInCombat && !prevCombatRef.current) {
-      if (splashTimerRef.current) clearTimeout(splashTimerRef.current)
-      setCombatSplash('intro')
-      splashTimerRef.current = setTimeout(() => setCombatSplash(null), 2500)
-    }
-    prevCombatRef.current = nowInCombat
-  }, [combat])
-
-  // -- Combat splash: victory / defeat when combat ends ---------------------
+  // -- Victory / defeat sound on death or story resolution ---------------------
   useEffect(() => {
     if (lastCombatResult === prevLastResultRef.current) return
     prevLastResultRef.current = lastCombatResult
-    if (lastCombatResult === 'enemy_victory') {
-      if (splashTimerRef.current) clearTimeout(splashTimerRef.current)
-      setCombatSplash('victory')
-      const vs = (storyConfig as any)?.victorySound as string | undefined
-      if (vs && !mute) { try { if (transientAudioRef.current) { transientAudioRef.current.pause(); transientAudioRef.current.currentTime = 0 } const a = new Audio(vs); a.volume = volume; transientAudioRef.current = a; a.play().catch(() => {}) } catch {} }
-    } else if (lastCombatResult === 'enemy_defeat') {
-      if (splashTimerRef.current) clearTimeout(splashTimerRef.current)
-      setCombatSplash('defeat')
+    if (lastCombatResult === 'story_death') {
       const ds = (storyConfig as any)?.defeatSound as string | undefined
       if (ds && !mute) { try { if (transientAudioRef.current) { transientAudioRef.current.pause(); transientAudioRef.current.currentTime = 0 } const a = new Audio(ds); a.volume = volume; transientAudioRef.current = a; a.play().catch(() => {}) } catch {} }
     }
@@ -544,24 +471,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     }
   }, [currentSceneKey])
 
-  // -- Special potion countdown -----------------------------------------------
-  useEffect(() => {
-    if (specialPotionSecs <= 0) return
-    const timer = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((specialPotionEndRef.current - Date.now()) / 1000))
-      setSpecialPotionSecs(remaining)
-      if (remaining === 0) clearInterval(timer)
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [specialPotionSecs])
-
-  const specialPotionActive = specialPotionSecs > 0
-
-  const activateSpecialPotion = (durationSeconds: number) => {
-    specialPotionEndRef.current = Date.now() + durationSeconds * 1000
-    setSpecialPotionSecs(durationSeconds)
-  }
-
   /**
    * Mark current node resolved and advance.
    */
@@ -574,11 +483,10 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setNodeStage('resolved')
     const next = Math.min(currentIndex + 1, Math.max(0, (storyConfig?.scenes.length || 1) - 1))
     setCurrentIndex(next)
-    setPendingTroll(false)
     setPendingAdvance(null)
   }
 
-  const goToScene = (sceneKey: string, resetEnemiesForVisit = true) => {
+  const goToScene = (sceneKey: string) => {
     const keys: MapStep[] = ['camino', 'bosque', 'arbustos', 'claroLobos']
     const index = keys.indexOf(sceneKey as MapStep)
     if (index >= 0) {
@@ -590,9 +498,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     }
     setCurrentSceneKey(sceneKey)
     setNodeStage('initial')
-    setPendingTroll(false)
     setPendingAdvance(null)
-    setBlockedDecision(null)
     setEventResultText('')
     setActiveMemoryEvent(null)
     setActiveRunnerEvent(null)
@@ -604,14 +510,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setPendingGameReward(null)
     setGameResultPending(false)
     setLastPenaltyHP(0)
-    if (resetEnemiesForVisit) {
-      setResolvedConfiguredEnemies(prev => {
-        const next = { ...prev }
-        Object.keys(next).forEach(key => {
-          if (key.startsWith(`${sceneKey}:`)) delete next[key]
-        })
-      return next
-    })
     setResolvedStoryEvents(prev => {
       const next = { ...prev }
       Object.keys(next).forEach(key => {
@@ -627,64 +525,8 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       return next
     })
   }
-  }
-
-  const startConfiguredEnemyCombat = (enemy: StoryEnemyConfig, nextSceneKey: string | null = null) => {
-    const enemyAttack = Number(enemy.attack) || 12
-    const enemyDefense = Number(enemy.defense) || 60
-    const fullEnemyKey = `${enemy.sceneKey}:${enemy.key}`
-    activeConfiguredEnemyKeyRef.current = fullEnemyKey
-    setFledConfiguredEnemies(prev => {
-      const next = { ...prev }
-      delete next[fullEnemyKey]
-      return next
-    })
-    setPendingAdvance(null)
-    setPendingConfiguredNext(nextSceneKey)
-    setPendingTroll(enemy.key.toLowerCase() === 'robot' || enemy.key.toLowerCase() === 'trol' || enemy.name.toLowerCase().includes('robot') || enemy.name.toLowerCase().includes('trol'))
-    startCombat({
-      inCombat: true,
-      enemyKey: fullEnemyKey,
-      enemyName: enemy.name || enemy.key || 'Enemigo',
-      enemyHealth: enemyDefense,
-      enemyMaxHealth: enemyDefense,
-      enemyDamageMin: Math.max(1, Math.floor(enemyAttack * 0.6)),
-      enemyDamageMax: Math.max(2, Math.ceil(enemyAttack * 1.2)),
-      weakWeapon: enemy.weakWeapon || '',
-      victoryTitle: enemy.victoryTitle || '',
-      defeatTitle: enemy.defeatTitle || '',
-      nextSceneKey: nextSceneKey || undefined,
-    })
-  }
-
-  const handleFleeCombat = () => {
-    const enemyKey = activeConfiguredEnemyKeyRef.current
-    if (enemyKey) {
-      setFledConfiguredEnemies(prev => ({ ...prev, [enemyKey]: true }))
-      activeConfiguredEnemyKeyRef.current = ''
-    }
-    setPendingAdvance(null)
-    setPendingConfiguredNext(null)
-    setPendingTroll(false)
-    fleeCombat()
-  }
-
-  const getDecisionBlockingEnemy = (decision: StoryDecisionConfig) => {
-    if (!decision.nextSceneKey) return null
-    return storyConfig?.enemies?.find(enemy => (
-      enemy.sceneKey === decision.nextSceneKey &&
-      !resolvedConfiguredEnemies[`${enemy.sceneKey}:${enemy.key}`]
-    )) || null
-  }
 
   const resolveConfiguredDecision = (decision: StoryDecisionConfig) => {
-    const blockingEnemy = getDecisionBlockingEnemy(decision)
-    if (blockingEnemy) {
-      setBlockedDecision(decision)
-      startConfiguredEnemyCombat(blockingEnemy, decision.nextSceneKey || null)
-      return
-    }
-
     if (decision.nextSceneKey) {
       goToScene(decision.nextSceneKey)
     } else {
@@ -900,33 +742,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   }
 
   /**
-   * resolveInitialChoice
-   * Start combat with sceneKey awareness so death drops items into node.
-   */
-  const resolveInitialChoice = (choice: 'seguir' | 'entrarCasa' | 'explorar') => {
-    if (choice === 'seguir') {
-      const item = sampleLootPool()
-      acquireItem(item)
-      markCurrentResolved()
-    } else if (choice === 'entrarCasa') {
-      setNodeStage('house_inside')
-    } else if (choice === 'explorar') {
-      const troll: any = {
-        inCombat: true,
-        enemyKey: `${step}:robot`,
-        enemyName: 'Robot Anti-Nube',
-        enemyHealth: 100,
-        enemyMaxHealth: 100,
-        enemyDamageMin: 10,
-        enemyDamageMax: 18,
-      }
-      setPendingAdvance(currentIndex + 1)
-      setPendingTroll(true)
-      startCombat(troll)
-    }
-  }
-
-  /**
    * resolveHouseDecision
    * Pass step to injure/storyKill so reducer drops items at current node on death.
    */
@@ -954,84 +769,24 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     }
   }
 
-  useEffect(() => {
-    if (!pendingAdvance) return
-    if (lastCombatResult === 'enemy_victory') {
-      const next = pendingAdvance
-      setPendingAdvance(null)
-      setNodesVisited(prev => {
-        const copy = [...prev]
-        const toMark = Math.max(0, next - 1)
-        copy[toMark] = true
-        return copy
-      })
-      setCurrentIndex(Math.min(next, 3))
-    } else if (lastCombatResult === 'enemy_defeat') {
-      setPendingAdvance(null)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastCombatResult, pendingAdvance])
-
-  useEffect(() => {
-    if (lastCombatResult === 'enemy_victory' && pendingConfiguredNext) {
-      const next = pendingConfiguredNext
-      setPendingConfiguredNext(null)
-      setBlockedDecision(null)
-      goToScene(next, false)
-    } else if (lastCombatResult === 'enemy_defeat') {
-      setPendingConfiguredNext(null)
-      if (blockedDecision?.sceneKey) goToScene(blockedDecision.sceneKey)
-      setBlockedDecision(null)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastCombatResult, pendingConfiguredNext])
-
-  const inCombat = Boolean(combat && combat.inCombat)
-
-  const isDeath =
-    health <= 0 &&
-    (lastCombatResult === 'enemy_defeat' || lastCombatResult === 'story_death')
+  const isDeath = health <= 0 && lastCombatResult === 'story_death'
 
   /**
-   * Effect: manage pinned death title
-   * - Pin the death title when the player dies for the first time.
-   * - If a subsequent death produces a different title, replace the pinned title.
-   * - Clear the pinned title when the player wins (enemy_victory).
-   * - The pinned title is also cleared when starting a new adventure (handled in restart).
-   */
-  /**
-   * Effect: update pinned title on terminal events
-   * - On death (combat or story) set pinnedTitle to the death title.
-   * - On victory (enemy_victory) set pinnedTitle to a victory title.
-   * - Pinned title always reflects the latest terminal event and is only cleared when the adventure is restarted.
+   * Effect: update pinned title on death
+   * Pinned title always reflects the latest death and is only cleared when the adventure is restarted.
    */
   React.useEffect(() => {
-    // Victory: set a victory title and show brief animation
-    if (lastCombatResult === 'enemy_victory') {
-      const victoryTitle = lastEventTitle || `Has reclamado la escena`
-      setPinnedTitle(victoryTitle)
-      setShowVictoryAnim(true)
-      const t = setTimeout(() => setShowVictoryAnim(false), 2200)
-      return () => clearTimeout(t)
-    }
-
-    // Death: always set the pinned title to the death title when dying
     if (isDeath) {
       setPinnedTitle(lastEventTitle || getDeathTitle())
     }
-  }, [isDeath, lastCombatResult, lastEventTitle, step])
+  }, [isDeath, lastEventTitle, step])
 
   /**
    * Function: getDeathTitle
    * Returns a title to display on death.
    */
   const getDeathTitle = (): string => {
-    if (lastCombatResult === 'story_death') return 'Has muerto'
     if (lastEventTitle) return lastEventTitle
-    const configuredTitle = storyConfig?.deathTitles?.find(death => death.enemyKey === `${currentSceneKey}:${(lastEnemyName || '').toLowerCase()}`)?.title
-    if (configuredTitle) return configuredTitle
-    if (lastCombatResult === 'enemy_defeat' && lastEnemyName) return `Te mato ${lastEnemyName}`
-    if (pendingTroll && lastCombatResult === 'enemy_defeat') return 'Eliminado por el Robot Anti-Nube'
     const titles: Record<MapStep, string> = {
       camino: 'Has muerto en el camino',
       bosque: 'Has muerto en el bosque',
@@ -1044,8 +799,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const handleRestartGame = () => {
     // Reset character (health / equip / inventory) on backend
     resetGame()
-    // Clear any active combat
-    fleeCombat()
     // Story position
     setCurrentIndex(0)
     setCurrentSceneKey(storyConfig?.scenes[0]?.key || '')
@@ -1079,15 +832,8 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setPendingGameReward(null)
     setGameResultPending(false)
     setLastPenaltyHP(0)
-    // Combat animation state
-    setCombatRolling(false)
-    setCombatDiceDisplay(null)
-    setBonusDiceActive(false)
-    setCombatSplash(null)
     // Refs
-    activeConfiguredEnemyKeyRef.current = ''
     runnerDismissedRef.current = ''
-    prevCombatRef.current = false
     prevLastResultRef.current = null
     // UI
     setStep('camino')
@@ -1134,16 +880,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
 
   const configuredScene = storyConfig?.scenes.find(scene => scene.key === currentSceneKey)
   const configuredDecisions = storyConfig?.decisions.filter(decision => decision.sceneKey === currentSceneKey) || []
-  const configuredDeath = storyConfig?.deathTitles?.find(death => death.enemyKey === `${currentSceneKey}:${(lastEnemyName || '').toLowerCase()}`)
-  const configuredEnemyDeath = storyConfig?.enemies?.find(enemy => (
-    enemy.sceneKey === currentSceneKey &&
-    `${currentSceneKey}:${enemy.key}` === `${currentSceneKey}:${(lastEnemyName || '').toLowerCase()}`
-  ))
   const configuredEnding = storyConfig?.endings?.find(ending => ending.sceneKey === currentSceneKey)
-  const configuredCurrentEnemies = storyConfig?.enemies?.filter(enemy => (
-    enemy.sceneKey === currentSceneKey &&
-    !resolvedConfiguredEnemies[`${enemy.sceneKey}:${enemy.key}`]
-  )) || []
   const configuredStoryEvents = storyConfig?.storyEvents?.filter(event => (
     event.sceneKey === currentSceneKey &&
     !resolvedStoryEvents[`${event.sceneKey}:${event.key}`]
@@ -1190,7 +927,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   ))
   const currentNetworkCardEvent = configuredNetworkCardEvents[0] || null
 
-  const fledCurrentEnemies = configuredCurrentEnemies.filter(enemy => fledConfiguredEnemies[`${enemy.sceneKey}:${enemy.key}`])
   const configuredNodeItems = storyConfig?.nodeItems?.filter(item => (
     item.sceneKey === currentSceneKey &&
     !collectedNodeItems[`${item.sceneKey}:${item.name}`]
@@ -1201,20 +937,12 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     y: Number.isFinite(Number(configuredScene?.mapY)) ? Number(configuredScene?.mapY) : 50,
   }
   const resolvedStory = ['Nodo resuelto. Elige otra decision desde el administrador para continuar la ruta.']
-  const combatStory = [
-    `El ${combat?.enemyName || 'enemigo'} se planta frente a ti. El mundo se reduce al peso del arma, al pulso en la garganta y al ruido seco de los dados antes del golpe.`,
-    'Cada ronda puede abrirte paso o dejarte al borde de la muerte.',
-  ]
   const deathStory = [
-    configuredEnemyDeath?.defeatDescription || configuredDeath?.description || (lastEnemyName
-      ? `${lastEnemyName} te derriba y el camino se vuelve silencio. Esta escena recuerda tu derrota, pero la historia aun permite volver a intentarlo desde un punto seguro.`
-      : 'Tu cuerpo cae y el camino se vuelve silencio. Esta escena recuerda tu derrota, pero la historia aun permite volver a intentarlo desde un punto seguro.'),
+    'Tu cuerpo cae y el camino se vuelve silencio. Esta escena recuerda tu derrota, pero la historia aun permite volver a intentarlo desde un punto seguro.',
   ]
   const storyParagraphs = isDeath
     ? deathStory
-    : inCombat
-      ? combatStory
-      : nodeStage === 'house_inside'
+    : nodeStage === 'house_inside'
         ? (configuredScene?.story?.length ? configuredScene.story : ['Este nodo no tiene historia escrita en admin.'])
         : nodeStage === 'resolved'
           ? resolvedStory
@@ -1227,20 +955,11 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
               : ['Este nodo no tiene historia escrita en admin.']
 
   useEffect(() => {
-    if (isDeath || inCombat || configuredEnding || nodeStage !== 'initial') return
-    if (activeConfiguredEnemyKeyRef.current) return
-    const nextEnemy = configuredCurrentEnemies.find(enemy => !fledConfiguredEnemies[`${enemy.sceneKey}:${enemy.key}`])
-    if (!nextEnemy) return
-    startConfiguredEnemyCombat(nextEnemy)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSceneKey, configuredCurrentEnemies.length, configuredEnding, fledConfiguredEnemies, inCombat, isDeath, nodeStage])
-
-  useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent) return
+    if (isDeath || activeMemoryEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent) return
     if (!currentMemoryEvent) return
     setActiveMemoryEvent(currentMemoryEvent)
-  }, [activeMemoryEvent, configuredCurrentEnemies.length, configuredEnding, currentMemoryEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeMemoryEvent, configuredEnding, currentMemoryEvent, currentStoryEvent, isDeath, nodeStage])
 
   // Auto-activate runner event (only once per scene visit, not after losing)
   const runnerDismissedRef = useRef<string>('')
@@ -1251,62 +970,52 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   }, [currentSceneKey])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent) return
+    if (isDeath || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent || currentMemoryEvent) return
     if (!currentRunnerEvent) return
     if (runnerDismissedRef.current === `${currentRunnerEvent.sceneKey}:${currentRunnerEvent.key}`) return
     setActiveRunnerEvent(currentRunnerEvent)
-  }, [activeMemoryEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentMemoryEvent, currentRunnerEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeMemoryEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredEnding, currentMemoryEvent, currentRunnerEvent, currentStoryEvent, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent) return
+    if (isDeath || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent || currentMemoryEvent || currentRunnerEvent) return
     if (!currentQuizEvent) return
     if (runnerDismissedRef.current === `${currentQuizEvent.sceneKey}:${currentQuizEvent.key}`) return
     setActiveTechQuizEvent(currentQuizEvent)
-  }, [activeMemoryEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentMemoryEvent, currentQuizEvent, currentRunnerEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeMemoryEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredEnding, currentMemoryEvent, currentQuizEvent, currentRunnerEvent, currentStoryEvent, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent) return
+    if (isDeath || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent) return
     if (!currentSnakeEvent) return
     if (runnerDismissedRef.current === `${currentSnakeEvent.sceneKey}:${currentSnakeEvent.key}`) return
     setActiveTechSnakeEvent(currentSnakeEvent)
-  }, [activeMemoryEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentMemoryEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeMemoryEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredEnding, currentMemoryEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent) return
+    if (isDeath || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent) return
     if (!currentMinefieldEvent) return
     if (runnerDismissedRef.current === `${currentMinefieldEvent.sceneKey}:${currentMinefieldEvent.key}`) return
     setActiveMinefieldEvent(currentMinefieldEvent)
-  }, [activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredEnding, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent) return
+    if (isDeath || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent) return
     if (!currentCircuitPuzzleEvent) return
     if (runnerDismissedRef.current === `${currentCircuitPuzzleEvent.sceneKey}:${currentCircuitPuzzleEvent.key}`) return
     setActiveCircuitPuzzleEvent(currentCircuitPuzzleEvent)
-  }, [activeCircuitPuzzleEvent, activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeCircuitPuzzleEvent, activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredEnding, currentCircuitPuzzleEvent, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent || currentCircuitPuzzleEvent) return
+    if (isDeath || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent || configuredEnding || nodeStage !== 'initial') return
+    if (currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent || currentCircuitPuzzleEvent) return
     if (!currentNetworkCardEvent) return
     if (runnerDismissedRef.current === `${currentNetworkCardEvent.sceneKey}:${currentNetworkCardEvent.key}`) return
     setActiveNetworkCardEvent(currentNetworkCardEvent)
-  }, [activeCircuitPuzzleEvent, activeMemoryEvent, activeMinefieldEvent, activeNetworkCardEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentMemoryEvent, currentMinefieldEvent, currentNetworkCardEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
-
-  useEffect(() => {
-    if (lastCombatResult === 'enemy_victory' && activeConfiguredEnemyKeyRef.current) {
-      const enemyKey = activeConfiguredEnemyKeyRef.current
-      setResolvedConfiguredEnemies(prev => ({ ...prev, [enemyKey]: true }))
-      activeConfiguredEnemyKeyRef.current = ''
-    } else if (lastCombatResult === 'enemy_defeat') {
-      activeConfiguredEnemyKeyRef.current = ''
-    }
-  }, [lastCombatResult])
+  }, [activeCircuitPuzzleEvent, activeMemoryEvent, activeMinefieldEvent, activeNetworkCardEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredEnding, currentCircuitPuzzleEvent, currentMemoryEvent, currentMinefieldEvent, currentNetworkCardEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, isDeath, nodeStage])
 
   const buildAdventureState = () => ({
     currentIndex,
@@ -1314,8 +1023,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     nodeStage,
     nodesVisited,
     collectedNodeItems,
-    fledConfiguredEnemies,
-    resolvedConfiguredEnemies,
     resolvedStoryEvents,
     resolvedMemoryEvents,
     eventResultText,
@@ -1332,17 +1039,11 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       setNodeStage(['initial', 'house_inside', 'resolved'].includes(state.nodeStage) ? state.nodeStage : 'initial')
       setNodesVisited(Array.isArray(state.nodesVisited) ? state.nodesVisited : [false, false, false, false])
       setCollectedNodeItems(state.collectedNodeItems || {})
-      setFledConfiguredEnemies(state.fledConfiguredEnemies || {})
-      setResolvedConfiguredEnemies(state.resolvedConfiguredEnemies || {})
       setResolvedStoryEvents(state.resolvedStoryEvents || {})
       setResolvedMemoryEvents(state.resolvedMemoryEvents || {})
       setEventResultText(state.eventResultText || '')
       setActiveMemoryEvent(null)
-      setPendingTroll(false)
       setPendingAdvance(null)
-      setPendingConfiguredNext(null)
-      setBlockedDecision(null)
-      activeConfiguredEnemyKeyRef.current = ''
       return true
     } catch {
       return false
@@ -1381,7 +1082,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     if (demoMode || !sessionSaveKey || !currentSceneKey) return
     sessionStorage.setItem(sessionSaveKey, JSON.stringify(buildAdventureState()))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, currentSceneKey, nodeStage, nodesVisited, collectedNodeItems, fledConfiguredEnemies, resolvedConfiguredEnemies, resolvedStoryEvents, resolvedMemoryEvents, eventResultText, activeMemoryEvent, sessionSaveKey])
+  }, [currentIndex, currentSceneKey, nodeStage, nodesVisited, collectedNodeItems, resolvedStoryEvents, resolvedMemoryEvents, eventResultText, activeMemoryEvent, sessionSaveKey])
 
   useEffect(() => {
     const onSave = () => saveCheckpoint()
@@ -1393,7 +1094,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       window.removeEventListener('rpg-reset-adventure', onReset)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkpointSaveKey, sessionSaveKey, currentIndex, currentSceneKey, nodeStage, nodesVisited, collectedNodeItems, fledConfiguredEnemies, resolvedConfiguredEnemies, resolvedStoryEvents, resolvedMemoryEvents, eventResultText])
+  }, [checkpointSaveKey, sessionSaveKey, currentIndex, currentSceneKey, nodeStage, nodesVisited, collectedNodeItems, resolvedStoryEvents, resolvedMemoryEvents, eventResultText])
 
   useEffect(() => {
     if (nodeAudioRef.current) {
@@ -1507,75 +1208,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
               <span className="text-yellow-200">{currentSceneKey}</span>
             </div>
           )}
-        </div>
-      )}
-
-      {/* -- Combat splash overlay ------------------------------------------- */}
-      {combatSplash && (
-        <div
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden rounded-lg"
-          style={{ background: 'rgba(0,0,0,0.82)' }}
-          onClick={combatSplash === 'intro' ? () => setCombatSplash(null) : undefined}
-        >
-          <img
-            src={
-              combatSplash === 'intro'   ? ((storyConfig as any)?.combatIntroImageUrl   || imgCombatIntro)   :
-              combatSplash === 'victory' ? ((storyConfig as any)?.combatVictoryImageUrl || imgCombatVictory) :
-              ((storyConfig as any)?.combatDefeatImageUrl || imgCombatDefeat)
-            }
-            alt={combatSplash}
-            className="max-h-[60%] max-w-[85%] rounded-xl object-contain drop-shadow-2xl"
-            style={{
-              animation: 'splashIn 0.4s ease-out',
-              filter: combatSplash === 'defeat' ? 'grayscale(0.4) brightness(0.85)' : 'brightness(1.08)',
-            }}
-          />
-          <div
-            className="mt-4 text-center text-2xl font-black uppercase tracking-widest drop-shadow-lg"
-            style={{
-              color: combatSplash === 'intro'   ? '#fbbf24' :
-                     combatSplash === 'victory' ? '#34d399' :
-                     '#f87171',
-              textShadow: combatSplash === 'victory'
-                ? '0 0 20px rgba(52,211,153,0.7)'
-                : combatSplash === 'defeat'
-                ? '0 0 20px rgba(248,113,113,0.7)'
-                : '0 0 20px rgba(251,191,36,0.7)',
-            }}
-          >
-            {combatSplash === 'intro'   && <span>&#x2694; Combate iniciado</span>}
-            {combatSplash === 'victory' && <span>&#x1F3C6; Victoria</span>}
-            {combatSplash === 'defeat'  && <span>&#x1F480; Derrotado</span>}
-          </div>
-          {combatSplash === 'intro'
-            ? <p className="mt-2 text-xs text-white/40">Toca para continuar</p>
-            : (
-              <button
-                onClick={() => {
-                  if (transientAudioRef.current) {
-                    transientAudioRef.current.pause()
-                    transientAudioRef.current.currentTime = 0
-                    transientAudioRef.current = null
-                  }
-                  setCombatSplash(null)
-                }}
-                className="mt-5 rounded-full border-2 px-8 py-2.5 text-sm font-black uppercase tracking-widest shadow-lg transition hover:brightness-110 active:scale-95"
-                style={{
-                  borderColor: combatSplash === 'victory' ? '#34d399' : '#f87171',
-                  background: combatSplash === 'victory' ? 'rgba(16,60,35,0.9)' : 'rgba(60,16,16,0.9)',
-                  color: combatSplash === 'victory' ? '#34d399' : '#f87171',
-                }}
-              >
-                Acepto
-              </button>
-            )
-          }
-          <style>{`
-            @keyframes splashIn {
-              from { opacity: 0; transform: scale(0.85); }
-              to   { opacity: 1; transform: scale(1); }
-            }
-          `}</style>
         </div>
       )}
 
@@ -1820,7 +1452,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         </div>
       )}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !currentMemoryEvent && !pendingGameReward && !gameResultPending && !pendingStoryFeedback && nodeStage === 'initial' && currentStoryEvent && !configuredEnding && (
+      {!isDeath &&!activeMemoryEvent && !currentMemoryEvent && !pendingGameReward && !gameResultPending && !pendingStoryFeedback && nodeStage === 'initial' && currentStoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border-2 border-fuchsia-400/40 bg-[#211020]/85 p-4 shadow-inner">
           <div className="mb-2 font-semibold text-fuchsia-100">{currentStoryEvent.title}</div>
           {currentStoryEvent.prompt && <p className="mb-3 whitespace-pre-wrap text-sm leading-6 text-white">{currentStoryEvent.prompt}</p>}
@@ -1888,7 +1520,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         )
       })()}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
+      {!isDeath &&!activeMemoryEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
         <div className="mt-4 rounded border-2 border-amber-400/40 bg-[#211408]/85 p-4 shadow-inner">
           <div className="mb-3 font-semibold text-amber-100">🎁 Objetos en este camino</div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -1906,8 +1538,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
                     const result = await acquireItem(itemFromConfig(item))
                     if (result.ok) {
                       setCollectedNodeItems(prev => ({ ...prev, [collectKey]: true }))
-                      const dur = item.specialDuration || 0
-                      if ((item.type === 'potion' || item.type === 'consumable') && dur > 0) activateSpecialPotion(dur)
                     }
                     return result
                   }}
@@ -1921,7 +1551,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       )}
 
       {/* Always show current node options (no click required) */}
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length > 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
+      {!isDeath &&!activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length > 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border-2 border-[#8f5728]/80 bg-[#160b08]/80 p-4 shadow-inner">
           <div className="flex flex-col gap-2">
             {configuredDecisions.map((decision, index) => (
@@ -1939,30 +1569,13 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
 
       <MapMini currentStep={step} marker={mapMarker} label={sceneTitle} mediaUrl={configuredScene?.mediaUrl} mediaType={configuredScene?.mediaType} mapLocations={storyConfig?.mapLocations || []} />
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && fledCurrentEnemies.length > 0 && !configuredEnding && (
-        <div className="mt-4 rounded border-2 border-rose-400/40 bg-[#240d0d]/85 p-4 shadow-inner">
-          <div className="mb-2 font-semibold text-rose-100">Combate pendiente</div>
-          <div className="flex flex-col gap-2">
-            {fledCurrentEnemies.map(enemy => (
-              <button
-                key={`${enemy.sceneKey}:${enemy.key}`}
-                onClick={() => startConfiguredEnemyCombat(enemy)}
-                className="w-full rounded border border-rose-200/30 bg-gradient-to-b from-rose-700 to-rose-950 px-3 py-2 text-sm font-bold text-white shadow hover:brightness-110"
-              >
-                Enfrentar a {enemy.name || enemy.key}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length === 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
+      {!isDeath &&!activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length === 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border border-[#8f5728]/80 bg-[#160b08]/80 p-4 text-sm text-[#ffe7bd]">
           Este nodo no tiene decisiones configuradas en el admin.
         </div>
       )}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && nodeStage === 'initial' && configuredEnding && (
+      {!isDeath &&!activeMemoryEvent && nodeStage === 'initial' && configuredEnding && (
         <div className="mt-4 rounded border-2 border-emerald-400/40 bg-[#0f2413]/85 p-4 shadow-inner">
           <div className="mb-2 font-semibold text-emerald-100">Ruta terminada</div>
           <button
@@ -1990,67 +1603,8 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       )}
 
       {/* Combat UI */}
-      {!isDeath && inCombat && combat && (
-        <div className="mt-4 space-y-3 rounded border-2 border-rose-500/40 bg-[#240d0d]/90 p-4 shadow-inner">
-          <div className="flex items-center gap-2">
-            <Swords className="w-4 h-4 text-red-300" />
-            <h5 className="text-sm font-black uppercase tracking-wide text-rose-100">
-              &#x1F916; Combate contra {combat.enemyName}
-            </h5>
-          </div>
-          <p className="text-xs text-[#ffe7bd]">Atacas a {combat.enemyName}. Si no lo derrotas, te devuelve el golpe.</p>
-
-          <div className="space-y-2 text-xs text-[#ffe7bd]">
-            <div>
-              <div className="mb-1 flex justify-between"><span>Tu vida</span><span>{health}/{maxHealth}</span></div>
-              <div className="h-4 overflow-hidden rounded-full border border-black/60 bg-red-950/70">
-                <div className="h-full bg-gradient-to-r from-red-700 via-red-500 to-rose-300" style={{ width: `${Math.max(0, Math.min(100, (health / Math.max(1, maxHealth)) * 100))}%` }} />
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between"><span>Vida del {combat.enemyName}</span><span>{combat.enemyHealth}/{combat.enemyMaxHealth}</span></div>
-              <div className="h-4 overflow-hidden rounded-full border border-black/60 bg-amber-950/70">
-                <div className="h-full bg-gradient-to-r from-amber-700 via-orange-500 to-yellow-200" style={{ width: `${Math.max(0, Math.min(100, (combat.enemyHealth / Math.max(1, combat.enemyMaxHealth)) * 100))}%` }} />
-              </div>
-            </div>
-            <div>Daño del robot: {combat.enemyDamageMin}&#x2013;{combat.enemyDamageMax}</div>
-          </div>
-
-          {/* Special potion active banner */}
-          {specialPotionActive && (
-            <div className="rounded border border-yellow-400/60 bg-yellow-900/40 px-3 py-1.5 text-center text-xs font-bold text-yellow-200 animate-pulse">
-              ⚡ Poción Especial activa — {specialPotionSecs}s restantes — Victoria garantizada
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2 pt-1">
-            {specialPotionActive ? (
-              <button
-                className="w-full rounded border border-yellow-300/60 bg-gradient-to-b from-yellow-500 to-yellow-800 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110"
-                onClick={() => autoWinCombat()}
-              >
-                ⚡ Poción Especial: Derrotar automáticamente
-              </button>
-            ) : (
-            <button
-              className="w-full rounded border border-emerald-200/30 bg-gradient-to-b from-emerald-600 to-emerald-900 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110"
-              onClick={() => resolveCombatRound()}
-            >
-              Atacar
-            </button>
-            )}
-            <button
-              className="w-full rounded border border-zinc-200/20 bg-gradient-to-b from-zinc-600 to-zinc-900 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110"
-              onClick={handleFleeCombat}
-            >
-              Huir del combate
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* After resolving a node but before next interaction */}
-      {!isDeath && !inCombat && nodeStage === 'resolved' && (
+      {!isDeath &&nodeStage === 'resolved' && (
         <div className="mt-4 rounded border border-white/6 bg-white/3 p-4">
           <p className="text-sm text-zinc-200">
             Has completado este punto de la historia. Avanzas al siguiente.

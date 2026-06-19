@@ -31,33 +31,10 @@ export interface EquipmentSlots {
 }
 
 /**
- * Interface: CombatState
- * Represents the current combat situation against a single enemy.
- */
-export interface CombatState {
-  /** Whether the player is currently in combat. */
-  inCombat: boolean
-  /** Display name of the enemy. */
-  enemyName: string
-  /** Current enemy health points. */
-  enemyHealth: number
-  /** Maximum enemy health points. */
-  enemyMaxHealth: number
-  /** Minimum damage the enemy can deal in one hit. */
-  enemyDamageMin: number
-  /** Maximum damage the enemy can deal in one hit. */
-  enemyDamageMax: number
-}
-
-/**
  * Type: LastCombatResult
- * Represents the high-level outcome of the last combat.
+ * Represents the high-level outcome of the last death event.
  */
-/**
- * Type: LastCombatResult
- * Represents the high-level outcome of the last combat or death event.
- */
-export type LastCombatResult = 'none' | 'enemy_victory' | 'enemy_defeat' | 'story_death'
+export type LastCombatResult = 'none' | 'story_death'
 
 /**
  * Interface: GameState
@@ -74,9 +51,7 @@ export interface GameState {
   health: number
   /** Maximum health points the player can reach. */
   maxHealth: number
-  /** Current combat status, null when not fighting. */
-  combat: CombatState | null
-  /** Outcome of the last resolved combat, if any. */
+  /** Outcome of the last death event, if any. */
   lastCombatResult: LastCombatResult
   /** Scene loot: map from scene key to dropped items (used when a player dies). */
   sceneLoot?: Record<string, Item[]>

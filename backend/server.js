@@ -160,12 +160,10 @@ const DEFAULT_EQUIPMENT_CATALOG = [
 const DEFAULT_STORY_CONFIG = {
   scenes: [],
   decisions: [],
-  enemies: [],
   nodeItems: [],
   equipmentCatalog: DEFAULT_EQUIPMENT_CATALOG,
   storyEvents: [],
   memoryEvents: [],
-  deathTitles: [],
   endings: [],
   mapLocations: [],
   runnerEvents: [],
@@ -223,9 +221,7 @@ function normalizeStoryConfig(config) {
     }))
     .filter(decision => decision.sceneKey && decision.label)
 
-  const deathTitles = Array.isArray(config?.deathTitles) ? config.deathTitles : []
   const endings = Array.isArray(config?.endings) ? config.endings : []
-  const enemies = Array.isArray(config?.enemies) ? config.enemies : []
   const nodeItems = Array.isArray(config?.nodeItems) ? config.nodeItems : []
   const storyEvents = Array.isArray(config?.storyEvents) ? config.storyEvents : []
   const memoryEvents = [
@@ -236,22 +232,6 @@ function normalizeStoryConfig(config) {
   return {
     scenes: normalizedScenes.length > 0 ? normalizedScenes : DEFAULT_STORY_CONFIG.scenes,
     decisions: normalizedDecisions,
-    enemies: enemies
-      .map(enemy => ({
-        key: typeof enemy.key === 'string' ? enemy.key.trim() : '',
-        sceneKey: typeof enemy.sceneKey === 'string' ? enemy.sceneKey.trim() : '',
-        name: typeof enemy.name === 'string' && enemy.name.trim() ? enemy.name.trim() : 'Enemigo',
-        attack: Number.isFinite(Number(enemy.attack)) ? Math.max(1, Number(enemy.attack)) : 10,
-        defense: Number.isFinite(Number(enemy.defense)) ? Math.max(1, Number(enemy.defense)) : 60,
-        weakWeapon: typeof enemy.weakWeapon === 'string' ? enemy.weakWeapon.trim() : '',
-        victoryTitle: typeof enemy.victoryTitle === 'string' ? enemy.victoryTitle.trim() : '',
-        defeatTitle: typeof enemy.defeatTitle === 'string' ? enemy.defeatTitle.trim() : '',
-        defeatDescription: typeof enemy.defeatDescription === 'string' ? enemy.defeatDescription.trim() : '',
-        rewardItemName: typeof enemy.rewardItemName === 'string' ? enemy.rewardItemName.trim() : '',
-        rewardItemType: typeof enemy.rewardItemType === 'string' ? enemy.rewardItemType.trim() : 'misc',
-        rewardItemPower: Number.isFinite(Number(enemy.rewardItemPower)) ? Number(enemy.rewardItemPower) : 0,
-      }))
-      .filter(enemy => enemy.key && enemy.sceneKey && sceneKeys.has(enemy.sceneKey)),
     nodeItems: nodeItems
       .map(nodeItem => ({
         sceneKey: typeof nodeItem.sceneKey === 'string' ? nodeItem.sceneKey.trim() : '',
@@ -325,13 +305,6 @@ function normalizeStoryConfig(config) {
         memoryLoseText: typeof event.memoryLoseText === 'string' ? event.memoryLoseText.trim() : '',
       }))
       .filter(event => event.sceneKey && sceneKeys.has(event.sceneKey) && event.key),
-    deathTitles: deathTitles
-      .map(death => ({
-        enemyKey: typeof death.enemyKey === 'string' ? death.enemyKey.trim() : '',
-        title: typeof death.title === 'string' ? death.title.trim() : '',
-        description: typeof death.description === 'string' ? death.description.trim() : '',
-      }))
-      .filter(death => death.enemyKey && death.title),
     endings: endings
       .map(ending => ({
         sceneKey: typeof ending.sceneKey === 'string' ? ending.sceneKey.trim() : '',
@@ -992,7 +965,6 @@ app.patch('/api/characters/:userId/health', async (req, res) => {
 app.post('/api/characters/:userId/death', async (req, res) => {
   try {
     const { userId } = req.params
-    const enemyKey = typeof req.body.enemyKey === 'string' ? req.body.enemyKey.trim() : ''
 
     if (!isUUID(userId)) {
       return res.status(400).json({ error: 'userId invalido' })
@@ -1009,23 +981,6 @@ app.post('/api/characters/:userId/death', async (req, res) => {
 
     const charId = charRes.rows[0].id
 
-    if (enemyKey) {
-      const equipped = await pool.query(
-        'SELECT item_id FROM equipment WHERE character_id = $1 AND item_id IS NOT NULL',
-        [charId]
-      )
-
-      for (const row of equipped.rows) {
-        await pool.query(
-          `INSERT INTO enemy_loot (enemy_key, item_id, quantity)
-           VALUES ($1, $2, 1)
-           ON CONFLICT (enemy_key, item_id)
-           DO UPDATE SET quantity = enemy_loot.quantity + 1`,
-          [enemyKey, row.item_id]
-        )
-      }
-    }
-
     await pool.query('UPDATE equipment SET item_id = NULL WHERE character_id = $1', [charId])
     await pool.query('UPDATE characters SET health = 0 WHERE id = $1', [charId])
 
@@ -1037,79 +992,6 @@ app.post('/api/characters/:userId/death', async (req, res) => {
     })
   } catch (err) {
     console.error('DEATH ERROR:', err)
-    res.status(500).json({ error: err.message })
-  }
-})
-
-app.post('/api/characters/:userId/claim-enemy-loot', async (req, res) => {
-  try {
-    const { userId } = req.params
-    const enemyKey = typeof req.body.enemyKey === 'string' ? req.body.enemyKey.trim() : ''
-
-    if (!isUUID(userId) || !enemyKey) {
-      return res.status(400).json({ error: 'Datos de botin invalidos' })
-    }
-
-    const charRes = await pool.query(
-      'SELECT id FROM characters WHERE user_id = $1',
-      [userId]
-    )
-
-    if (charRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Personaje no encontrado' })
-    }
-
-    const charId = charRes.rows[0].id
-    const loot = await pool.query(
-      'SELECT item_id, quantity FROM enemy_loot WHERE enemy_key = $1',
-      [enemyKey]
-    )
-
-    let claimedCount = 0
-    for (const row of loot.rows) {
-      const itemRes = await pool.query('SELECT * FROM items WHERE id = $1', [row.item_id])
-      const item = itemRes.rows[0]
-      if (!item) continue
-
-      let quantityToClaim = Number(row.quantity) || 0
-      if (!isPotionItem(item)) {
-        const carriedCount = await getCarriedNonPotionCount(charId)
-        const currentQuantity = await getInventoryQuantity(charId, row.item_id)
-        quantityToClaim = Math.min(
-          quantityToClaim,
-          Math.max(0, INVENTORY_STACK_LIMIT - currentQuantity),
-          Math.max(0, INVENTORY_ITEM_LIMIT - carriedCount)
-        )
-      }
-
-      if (quantityToClaim <= 0) continue
-
-      await pool.query(
-        `INSERT INTO inventory (character_id, item_id, quantity)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (character_id, item_id)
-         DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity`,
-        [charId, row.item_id, quantityToClaim]
-      )
-      claimedCount += quantityToClaim
-
-      if (quantityToClaim >= Number(row.quantity)) {
-        await pool.query('DELETE FROM enemy_loot WHERE enemy_key = $1 AND item_id = $2', [enemyKey, row.item_id])
-      } else {
-        await pool.query(
-          'UPDATE enemy_loot SET quantity = quantity - $1 WHERE enemy_key = $2 AND item_id = $3',
-          [quantityToClaim, enemyKey, row.item_id]
-        )
-      }
-    }
-
-    const updated = await getCharacterByUserId(userId)
-    res.json({
-      claimed: claimedCount,
-      inventory: updated.inventory,
-    })
-  } catch (err) {
-    console.error('CLAIM LOOT ERROR:', err)
     res.status(500).json({ error: err.message })
   }
 })
