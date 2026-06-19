@@ -148,11 +148,21 @@ function clampMapPercent(value, fallback) {
   return Math.min(100, Math.max(0, numeric))
 }
 
+const DEFAULT_EQUIPMENT_CATALOG = [
+  { sceneKey: '', name: 'Casco',            type: 'armor',  slot: 'head',   power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Pechera',          type: 'armor',  slot: 'chest',  power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Antebrazos',       type: 'ring',   slot: 'ring',   power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Botas',            type: 'armor',  slot: 'legs',   power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Mochila',          type: 'armor',  slot: 'boots',  power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Brazos Robóticos', type: 'weapon', slot: 'weapon', power: 5, rarity: 'common', description: '' },
+]
+
 const DEFAULT_STORY_CONFIG = {
   scenes: [],
   decisions: [],
   enemies: [],
   nodeItems: [],
+  equipmentCatalog: DEFAULT_EQUIPMENT_CATALOG,
   storyEvents: [],
   memoryEvents: [],
   deathTitles: [],
@@ -256,6 +266,20 @@ function normalizeStoryConfig(config) {
         specialDuration: Number.isFinite(Number(nodeItem.specialDuration)) ? Number(nodeItem.specialDuration) : 0,
       }))
       .filter(nodeItem => nodeItem.sceneKey && sceneKeys.has(nodeItem.sceneKey) && nodeItem.name),
+    equipmentCatalog: DEFAULT_EQUIPMENT_CATALOG.map(def => {
+      const saved = Array.isArray(config?.equipmentCatalog)
+        ? config.equipmentCatalog.find(it => it && it.slot === def.slot)
+        : null
+      return {
+        sceneKey: '',
+        name: saved && typeof saved.name === 'string' && saved.name.trim() ? saved.name.trim() : def.name,
+        type: def.type,
+        slot: def.slot,
+        power: saved && Number.isFinite(Number(saved.power)) ? Number(saved.power) : def.power,
+        rarity: saved && typeof saved.rarity === 'string' && saved.rarity.trim() ? saved.rarity.trim() : def.rarity,
+        description: saved && typeof saved.description === 'string' ? saved.description.trim() : def.description,
+      }
+    }),
     storyEvents: storyEvents
       .filter(event => event?.optionAEffect !== 'memory_duel' && event?.optionBEffect !== 'memory_duel')
       .map((event, index) => ({

@@ -60,6 +60,23 @@ interface NodeItemConfig {
   specialDuration?: number
 }
 
+// Catalogo global: los unicos 6 objetos de equipo que existen en el juego.
+// Su nombre/poder/rareza se configuran una sola vez aqui y se usan en todos
+// lados (nodos y premios de minijuegos) seleccionando por slot, sin volver a
+// escribir nombre ni poder en cada lugar.
+const DEFAULT_EQUIPMENT_CATALOG: NodeItemConfig[] = [
+  { sceneKey: '', name: 'Casco',            type: 'armor',  slot: 'head',   power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Pechera',          type: 'armor',  slot: 'chest',  power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Antebrazos',       type: 'ring',   slot: 'ring',   power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Botas',            type: 'armor',  slot: 'legs',   power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Mochila',          type: 'armor',  slot: 'boots',  power: 5, rarity: 'common', description: '' },
+  { sceneKey: '', name: 'Brazos Robóticos', type: 'weapon', slot: 'weapon', power: 5, rarity: 'common', description: '' },
+]
+
+function catalogToNodeItem(cat: NodeItemConfig, sceneKey: string): NodeItemConfig {
+  return { ...cat, sceneKey }
+}
+
 type EventEffect = 'none' | 'reward_item' | 'damage_half' | 'death' | 'remove_item'
 
 interface StoryChoiceEventConfig {
@@ -189,6 +206,7 @@ interface StoryConfig {
   decisions: DecisionConfig[]
   enemies: EnemyConfig[]
   nodeItems: NodeItemConfig[]
+  equipmentCatalog: NodeItemConfig[]
   storyEvents: StoryChoiceEventConfig[]
   memoryEvents: MemoryEventConfig[]
   deathTitles: DeathTitleConfig[]
@@ -215,6 +233,7 @@ const emptyConfig: StoryConfig = {
   decisions: [],
   enemies: [],
   nodeItems: [],
+  equipmentCatalog: DEFAULT_EQUIPMENT_CATALOG,
   storyEvents: [],
   memoryEvents: [],
   deathTitles: [],
@@ -785,6 +804,7 @@ export default function AdminPage() {
           decisions: data.config?.decisions || [],
           enemies: (data.config?.enemies || []).map(normalizeEnemy),
           nodeItems: (data.config?.nodeItems || []).map(normalizeNodeItem),
+          equipmentCatalog: data.config?.equipmentCatalog || DEFAULT_EQUIPMENT_CATALOG,
           storyEvents: (data.config?.storyEvents || []).map(normalizeStoryEvent),
           memoryEvents: (data.config?.memoryEvents || []).map(normalizeMemoryEvent),
           deathTitles: data.config?.deathTitles || [],
@@ -874,6 +894,7 @@ export default function AdminPage() {
         decisions: data.config?.decisions || [],
         enemies: (data.config?.enemies || []).map(normalizeEnemy),
         nodeItems: (data.config?.nodeItems || []).map(normalizeNodeItem),
+          equipmentCatalog: data.config?.equipmentCatalog || DEFAULT_EQUIPMENT_CATALOG,
         storyEvents: (data.config?.storyEvents || []).map(normalizeStoryEvent),
         memoryEvents: (data.config?.memoryEvents || []).map(normalizeMemoryEvent),
         deathTitles: data.config?.deathTitles || [],
@@ -951,6 +972,7 @@ export default function AdminPage() {
           decisions: data.config?.decisions || [],
           enemies: (data.config?.enemies || []).map(normalizeEnemy),
           nodeItems: (data.config?.nodeItems || []).map(normalizeNodeItem),
+          equipmentCatalog: data.config?.equipmentCatalog || DEFAULT_EQUIPMENT_CATALOG,
           storyEvents: (data.config?.storyEvents || []).map(normalizeStoryEvent),
           memoryEvents: (data.config?.memoryEvents || []).map(normalizeMemoryEvent),
           deathTitles: data.config?.deathTitles || [],
@@ -1060,6 +1082,18 @@ export default function AdminPage() {
       ...prev,
       nodeItems: prev.nodeItems.map((item, i) => i === index ? { ...item, ...patch } : item),
     }))
+  }
+
+  const updateEquipmentCatalogItem = (slot: string, patch: Partial<NodeItemConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      equipmentCatalog: prev.equipmentCatalog.map(item => item.slot === slot ? { ...item, ...patch } : item),
+    }))
+  }
+
+  const placeCatalogItem = (index: number, slot: string) => {
+    const cat = config.equipmentCatalog.find(c => c.slot === slot) || config.equipmentCatalog[0]
+    updateNodeItem(index, { name: cat.name, type: cat.type, slot: cat.slot, power: cat.power, rarity: cat.rarity })
   }
 
   const updateEnding = (index: number, patch: Partial<EndingConfig>) => {
@@ -1229,7 +1263,7 @@ export default function AdminPage() {
   const addItemToNode = (sceneKey: string) => {
     setConfig(prev => ({
       ...prev,
-      nodeItems: [...prev.nodeItems, { ...blankNodeItem, sceneKey, name: 'Nuevo objeto' }],
+      nodeItems: [...prev.nodeItems, catalogToNodeItem(prev.equipmentCatalog[0], sceneKey)],
     }))
     setMessage(`Objeto agregado al nodo ${sceneKey}.`)
   }
@@ -2235,24 +2269,21 @@ export default function AdminPage() {
                 {/* Objetos de equipamiento */}
                 <div className="rounded border border-amber-300/25 bg-amber-950/20 p-3">
                   <div className="mb-2 font-semibold text-amber-100">Objetos de equipamiento</div>
+                  <p className="mb-2 text-[10px] text-slate-500">Elige cual de los 6 objetos del catalogo aparece en este nodo. El poder y la rareza se configuran en "Catalogo de Equipamiento".</p>
                   {selectedItems.filter(({ item }) => item.type !== 'potion' && item.type !== 'consumable').length === 0
                     ? <div className="text-xs text-slate-400">Sin objetos en este nodo.</div>
-                    : selectedItems.filter(({ item }) => item.type !== 'potion' && item.type !== 'consumable').map(({ item, index }) => (
-                      <div key={`quick-item-${index}`} className="relative mb-2 grid gap-2 rounded bg-slate-900 p-2 md:grid-cols-2">
+                    : selectedItems.filter(({ item }) => item.type !== 'potion' && item.type !== 'consumable').map(({ item, index }) => {
+                      const cat = config.equipmentCatalog.find(c => c.slot === getVisualType(item.type, item.slot)) || config.equipmentCatalog[0]
+                      return (
+                      <div key={`quick-item-${index}`} className="relative mb-2 flex items-center gap-2 rounded bg-slate-900 p-2">
                         <button onClick={() => deleteItemFromFlow(index)} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-red-600/80 text-[10px] font-bold text-white hover:bg-red-600" title="Eliminar">✕</button>
-                        <LabeledInput label="Nombre" value={item.name} onChange={value => updateNodeItem(index, { name: value })} placeholder="Pistola oxidada" />
-                        <LabeledSelect label="Tipo de equipo" value={getVisualType(item.type, item.slot)} onChange={v => {
-                          const m = VISUAL_TYPE_MAP[v] || { type: 'armor', slot: 'chest' }
-                          updateNodeItem(index, { type: m.type, slot: m.slot })
-                        }} options={EQUIP_VISUAL_OPTIONS} />
-                        <LabeledNumber label="Poder" value={item.power} onChange={value => updateNodeItem(index, { power: value })} />
-                        <LabeledSelect label="Rareza" value={item.rarity} onChange={value => updateNodeItem(index, { rarity: value })} options={[
-                          { value: 'common', label: 'Comun' },
-                          { value: 'rare', label: 'Raro' },
-                          { value: 'epic', label: 'Epico' },
-                        ]} />
+                        <div className="flex-1">
+                          <LabeledSelect label="Objeto" value={getVisualType(item.type, item.slot)} onChange={v => placeCatalogItem(index, v)} options={EQUIP_VISUAL_OPTIONS} />
+                        </div>
+                        <span className="mt-4 shrink-0 rounded bg-slate-800 px-2 py-1.5 text-xs font-bold text-amber-200">+{cat.power} · {cat.rarity === 'epic' ? 'Épico' : cat.rarity === 'rare' ? 'Raro' : 'Común'}</span>
                       </div>
-                    ))
+                      )
+                    })
                   }
                 </div>
 
@@ -2419,17 +2450,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.memoryRewardItemName} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateMemoryEvent(index, { memoryRewardItemName: e.target.value, ...(it ? { memoryRewardItemType: it.type, memoryRewardItemSlot: it.slot, memoryRewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2463,17 +2492,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateRunnerEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2507,17 +2534,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateQuizEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2582,17 +2607,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateSnakeEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2631,17 +2654,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateMinefieldEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2680,17 +2701,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateDiceCombatEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2742,17 +2761,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateCircuitPuzzleEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2788,17 +2805,15 @@ export default function AdminPage() {
                             <label className="space-y-1 text-xs font-semibold text-slate-300">
                               <span>Premio (item)</span>
                               <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                                 updateNetworkCardEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
                               }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                                 <option value="">-- Sin premio --</option>
                                 <optgroup label="Equipamiento">
-                                    {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                                      ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                                          <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                        ))
-                                      : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                                  </optgroup>
+                                      {config.equipmentCatalog.map(it => (
+                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                                      ))}
+                                    </optgroup>
                                 <optgroup label="Pociones">
                                   {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                                     <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2953,17 +2968,15 @@ export default function AdminPage() {
                 <label className="space-y-1 text-xs font-semibold text-slate-300">
                   <span>Premio al vencerlo</span>
                   <select value={enemy.rewardItemName || ''} onChange={e => {
-                    const it = [...POTION_PRESETS, ...config.nodeItems].find(i => i.name === e.target.value)
+                    const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
                     updateEnemy(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemPower: it.power } : {}) })
                   }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
                     <option value="">-- Sin premio --</option>
                     <optgroup label="Equipamiento">
-                        {config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').length > 0
-                          ? config.nodeItems.filter(it => it.type !== 'potion' && it.type !== 'consumable').map(it => (
-                              <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                            ))
-                          : <option value="" disabled>(crea un objeto en 'Equipamiento por camino')</option>}
-                      </optgroup>
+                          {config.equipmentCatalog.map(it => (
+                            <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
+                          ))}
+                        </optgroup>
                     <optgroup label="Pociones">
                       {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
                         <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
@@ -2987,30 +3000,42 @@ export default function AdminPage() {
           ))}
         </AdminList>
 
-        {/* 4a. Equipamiento */}
-        <AdminList title="4a. Equipamiento por camino" icon={<PackagePlus className="h-5 w-5 text-amber-300" />} onAdd={() => setConfig(prev => ({ ...prev, nodeItems: [...prev.nodeItems, { ...blankNodeItem }] }))}>
-          {config.nodeItems.filter(item => item.type !== 'potion' && item.type !== 'consumable').map((item) => {
-            const index = config.nodeItems.indexOf(item)
-            return (
-              <div key={index} className="rounded border border-white/10 bg-slate-900 p-4">
-                <div className="mb-3 text-sm font-bold text-amber-200">
-                  {item.name || 'Sin nombre'} — nodo {item.sceneKey || '?'}
-                </div>
-                <div className="grid gap-2 md:grid-cols-5">
-                  <LabeledSelect label="Nodo" value={item.sceneKey} onChange={value => updateNodeItem(index, { sceneKey: value })} options={nodeOptions} />
-                  <LabeledInput label="Nombre" value={item.name} onChange={value => updateNodeItem(index, { name: value })} placeholder="Pistola oxidada" />
-                  <LabeledSelect label="Tipo de equipo" value={getVisualType(item.type, item.slot)} onChange={v => {
-                    const m = VISUAL_TYPE_MAP[v] || { type: 'armor', slot: 'chest' }
-                    updateNodeItem(index, { type: m.type, slot: m.slot })
-                  }} options={EQUIP_VISUAL_OPTIONS} />
-                  <LabeledNumber label="Poder" value={item.power} onChange={value => updateNodeItem(index, { power: value })} />
-                  <LabeledSelect label="Rareza" value={item.rarity} onChange={value => updateNodeItem(index, { rarity: value })} options={[
+        {/* Catalogo de Equipamiento */}
+        <section className="rounded-xl border border-amber-700/40 bg-amber-950/10 p-5 shadow-lg">
+          <h2 className="mb-1 inline-flex items-center gap-2 text-xl font-bold text-white"><PackagePlus className="h-5 w-5 text-amber-300" /> Catálogo de Equipamiento</h2>
+          <p className="mb-4 text-xs text-slate-400">Configura aqui el poder y la rareza de los 6 objetos de equipo del juego. Son los unicos que se pueden colocar en los nodos o dar como premio en los minijuegos.</p>
+          <div className="grid gap-3 md:grid-cols-3">
+            {config.equipmentCatalog.map(cat => (
+              <div key={cat.slot} className="rounded border border-white/10 bg-slate-900 p-3">
+                <div className="mb-2 text-sm font-bold text-amber-200">{EQUIP_VISUAL_OPTIONS.find(o => o.value === cat.slot)?.label || cat.slot}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <LabeledNumber label="Poder" value={cat.power} onChange={value => updateEquipmentCatalogItem(cat.slot, { power: value })} />
+                  <LabeledSelect label="Rareza" value={cat.rarity} onChange={value => updateEquipmentCatalogItem(cat.slot, { rarity: value })} options={[
                     { value: 'common', label: 'Comun' },
                     { value: 'rare', label: 'Raro' },
                     { value: 'epic', label: 'Epico' },
                   ]} />
                 </div>
-                <LabeledInput label="Descripcion" value={item.description} onChange={value => updateNodeItem(index, { description: value })} placeholder="Descripcion del objeto" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 4a. Equipamiento */}
+        <AdminList title="4a. Equipamiento por camino" icon={<PackagePlus className="h-5 w-5 text-amber-300" />} onAdd={() => setConfig(prev => ({ ...prev, nodeItems: [...prev.nodeItems, catalogToNodeItem(prev.equipmentCatalog[0], '')] }))}>
+          {config.nodeItems.filter(item => item.type !== 'potion' && item.type !== 'consumable').map((item) => {
+            const index = config.nodeItems.indexOf(item)
+            const cat = config.equipmentCatalog.find(c => c.slot === getVisualType(item.type, item.slot)) || config.equipmentCatalog[0]
+            return (
+              <div key={index} className="rounded border border-white/10 bg-slate-900 p-4">
+                <div className="mb-3 text-sm font-bold text-amber-200">
+                  {item.name || 'Sin nombre'} — nodo {item.sceneKey || '?'}
+                </div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <LabeledSelect label="Nodo" value={item.sceneKey} onChange={value => updateNodeItem(index, { sceneKey: value })} options={nodeOptions} />
+                  <LabeledSelect label="Objeto" value={getVisualType(item.type, item.slot)} onChange={v => placeCatalogItem(index, v)} options={EQUIP_VISUAL_OPTIONS} />
+                  <span className="mt-4 self-start rounded bg-slate-800 px-2 py-1.5 text-xs font-bold text-amber-200">+{cat.power} · {cat.rarity === 'epic' ? 'Épico' : cat.rarity === 'rare' ? 'Raro' : 'Común'}</span>
+                </div>
                 <button onClick={() => setConfig(prev => ({ ...prev, nodeItems: prev.nodeItems.filter((_, i) => i !== index) }))} className="mt-3 inline-flex items-center gap-2 rounded bg-red-600 px-3 py-1.5 text-sm hover:bg-red-700">
                   <Trash2 className="h-4 w-4" /> Eliminar
                 </button>
