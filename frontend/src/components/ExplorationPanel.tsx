@@ -16,7 +16,6 @@ import { RunnerGame, RunnerResult } from './RunnerGame'
 import { TechQuizGame, TechQuizEventConfig, QuizResult } from './TechQuizGame'
 import { TechSnakeGame, TechSnakeEventConfig, SnakeResult } from './TechSnakeGame'
 import { MinefieldGame, MinefieldEventConfig, MinefieldResult } from './MinefieldGame'
-import { DiceCombatGame, DiceCombatEventConfig, DiceCombatResult } from './DiceCombatGame'
 import { CircuitPuzzleGame, CircuitPuzzleEventConfig, CircuitPuzzleResult } from './CircuitPuzzleGame'
 import { NetworkCardGame, NetworkCardEventConfig, NetworkCardResult } from './NetworkCardGame'
 import { useMusic } from '../context/MusicProvider'
@@ -230,12 +229,6 @@ function sampleLootPool(): Item {
       description: 'Restaura vida al operador.',
       rarity: 'common',
     },
-    {
-      name: 'Dado Adicional',
-      type: 'bonus_die',
-      description: 'Lanza un dado extra en tu proximo turno de combate. Toma el mejor resultado.',
-      rarity: 'rare',
-    },
   ]
   const pick = pool[Math.floor(Math.random() * pool.length)]
   return { ...pick, id: generateId() }
@@ -332,10 +325,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const [nodeStage, setNodeStage] = useState<'initial' | 'house_inside' | 'resolved'>('initial')
   const [pendingTroll, setPendingTroll] = useState<boolean>(false)
   const [pendingAdvance, setPendingAdvance] = useState<number | null>(null)
-  const [combatRolling, setCombatRolling] = useState(false)
-  const [combatDiceDisplay, setCombatDiceDisplay] = useState<{ player: number; enemy: number } | null>(null)
-  const [bonusDiceActive, setBonusDiceActive] = useState(false)
-  const combatRollingTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
   const [combatSplash, setCombatSplash] = useState<'intro' | 'victory' | 'defeat' | null>(null)
   const splashTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevCombatRef = React.useRef<boolean>(false)
@@ -364,8 +353,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   const [activeTechSnakeEvent, setActiveTechSnakeEvent] = useState<TechSnakeEventConfig | null>(null)
   const [activeMinefieldEvent, setActiveMinefieldEvent] = useState<MinefieldEventConfig | null>(null)
   const [resolvedMinefieldEvents, setResolvedMinefieldEvents] = useState<Record<string, boolean>>({})
-  const [activeDiceCombatEvent, setActiveDiceCombatEvent] = useState<DiceCombatEventConfig | null>(null)
-  const [resolvedDiceCombatEvents, setResolvedDiceCombatEvents] = useState<Record<string, boolean>>({})
   const [activeCircuitPuzzleEvent, setActiveCircuitPuzzleEvent] = useState<CircuitPuzzleEventConfig | null>(null)
   const [resolvedCircuitPuzzleEvents, setResolvedCircuitPuzzleEvents] = useState<Record<string, boolean>>({})
   const [activeNetworkCardEvent, setActiveNetworkCardEvent] = useState<NetworkCardEventConfig | null>(null)
@@ -612,7 +599,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setActiveTechQuizEvent(null)
     setActiveTechSnakeEvent(null)
     setActiveMinefieldEvent(null)
-    setActiveDiceCombatEvent(null)
     setActiveCircuitPuzzleEvent(null)
     setActiveNetworkCardEvent(null)
     setPendingGameReward(null)
@@ -878,22 +864,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     }
   }
 
-  const finishDiceCombat = (event: DiceCombatEventConfig, result: DiceCombatResult) => {
-    const evKey = `${event.sceneKey}:${event.key}`
-    setActiveDiceCombatEvent(null)
-    setResolvedDiceCombatEvents(prev => ({ ...prev, [evKey]: true }))
-    if (result === 'win') {
-      if (event.rewardItemName) {
-        applyGameReward(event.rewardItemName, event.rewardItemType || 'misc', Number(event.rewardItemPower) || 5, event.winText || `¡Derrotaste a ${event.enemyName || 'el enemigo'}!`, event.rewardItemSlot)
-      } else {
-        setEventResultText(event.winText || `¡Derrotaste a ${event.enemyName || 'el enemigo'}!`)
-        setGameResultPending(true)
-      }
-    } else {
-      applyGameLoss(event.loseText || `${event.enemyName || 'El enemigo'} te venció.`)
-    }
-  }
-
   const finishCircuitPuzzle = (event: CircuitPuzzleEventConfig, result: CircuitPuzzleResult) => {
     const evKey = `${event.sceneKey}:${event.key}`
     setActiveCircuitPuzzleEvent(null)
@@ -1102,8 +1072,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setActiveTechSnakeEvent(null)
     setActiveMinefieldEvent(null)
     setResolvedMinefieldEvents({})
-    setActiveDiceCombatEvent(null)
-    setResolvedDiceCombatEvents({})
     setActiveCircuitPuzzleEvent(null)
     setResolvedCircuitPuzzleEvents({})
     setActiveNetworkCardEvent(null)
@@ -1209,11 +1177,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     !resolvedMinefieldEvents[`${event.sceneKey}:${event.key}`]
   ))
   const currentMinefieldEvent = configuredMinefieldEvents[0] || null
-  const configuredDiceCombatEvents = (storyConfig?.diceCombatEvents || []).filter(event => (
-    event.sceneKey === currentSceneKey &&
-    !resolvedDiceCombatEvents[`${event.sceneKey}:${event.key}`]
-  ))
-  const currentDiceCombatEvent = configuredDiceCombatEvents[0] || null
 
   const configuredCircuitPuzzleEvents = (storyConfig?.circuitPuzzleEvents || []).filter(event => (
     event.sceneKey === currentSceneKey &&
@@ -1320,28 +1283,20 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   }, [activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || configuredEnding || nodeStage !== 'initial') return
+    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || configuredEnding || nodeStage !== 'initial') return
     if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent) return
-    if (!currentDiceCombatEvent) return
-    if (runnerDismissedRef.current === `${currentDiceCombatEvent.sceneKey}:${currentDiceCombatEvent.key}`) return
-    setActiveDiceCombatEvent(currentDiceCombatEvent)
-  }, [activeDiceCombatEvent, activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentDiceCombatEvent, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
-
-  useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent || currentDiceCombatEvent) return
     if (!currentCircuitPuzzleEvent) return
     if (runnerDismissedRef.current === `${currentCircuitPuzzleEvent.sceneKey}:${currentCircuitPuzzleEvent.key}`) return
     setActiveCircuitPuzzleEvent(currentCircuitPuzzleEvent)
-  }, [activeCircuitPuzzleEvent, activeDiceCombatEvent, activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentDiceCombatEvent, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeCircuitPuzzleEvent, activeMemoryEvent, activeMinefieldEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentMemoryEvent, currentMinefieldEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
 
   useEffect(() => {
-    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent || configuredEnding || nodeStage !== 'initial') return
-    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent || currentDiceCombatEvent || currentCircuitPuzzleEvent) return
+    if (isDeath || inCombat || activeMemoryEvent || activeRunnerEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent || configuredEnding || nodeStage !== 'initial') return
+    if (configuredCurrentEnemies.length > 0 || currentStoryEvent || currentMemoryEvent || currentRunnerEvent || currentQuizEvent || currentSnakeEvent || currentMinefieldEvent || currentCircuitPuzzleEvent) return
     if (!currentNetworkCardEvent) return
     if (runnerDismissedRef.current === `${currentNetworkCardEvent.sceneKey}:${currentNetworkCardEvent.key}`) return
     setActiveNetworkCardEvent(currentNetworkCardEvent)
-  }, [activeCircuitPuzzleEvent, activeDiceCombatEvent, activeMemoryEvent, activeMinefieldEvent, activeNetworkCardEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentDiceCombatEvent, currentMemoryEvent, currentMinefieldEvent, currentNetworkCardEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
+  }, [activeCircuitPuzzleEvent, activeMemoryEvent, activeMinefieldEvent, activeNetworkCardEvent, activeRunnerEvent, activeTechQuizEvent, activeTechSnakeEvent, configuredCurrentEnemies.length, configuredEnding, currentCircuitPuzzleEvent, currentMemoryEvent, currentMinefieldEvent, currentNetworkCardEvent, currentQuizEvent, currentRunnerEvent, currentSnakeEvent, currentStoryEvent, inCombat, isDeath, nodeStage])
 
   useEffect(() => {
     if (lastCombatResult === 'enemy_victory' && activeConfiguredEnemyKeyRef.current) {
@@ -1519,7 +1474,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     activeTechQuizEvent    ? (activeTechQuizEvent.title    || 'AWS Quiz') :
     activeTechSnakeEvent   ? (activeTechSnakeEvent.title   || 'Snake Tecnológico') :
     activeMinefieldEvent   ? (activeMinefieldEvent.title   || 'Campo de Minas') :
-    activeDiceCombatEvent  ? (activeDiceCombatEvent.title  || 'Combate con Dados') :
     activeCircuitPuzzleEvent ? (activeCircuitPuzzleEvent.title || 'Circuito Eléctrico') :
     activeNetworkCardEvent ? (activeNetworkCardEvent.title || 'Duelo de Red AWS') :
     ''
@@ -1530,7 +1484,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     else if (activeTechQuizEvent) finishTechQuiz(activeTechQuizEvent, result)
     else if (activeTechSnakeEvent) finishTechSnake(activeTechSnakeEvent, result)
     else if (activeMinefieldEvent) finishMinefield(activeMinefieldEvent, result)
-    else if (activeDiceCombatEvent) finishDiceCombat(activeDiceCombatEvent, result)
     else if (activeCircuitPuzzleEvent) finishCircuitPuzzle(activeCircuitPuzzleEvent, result)
     else if (activeNetworkCardEvent) finishNetworkCard(activeNetworkCardEvent, result)
   }
@@ -1685,7 +1638,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       </div>
 
       {/* ── Active game overlay — expands to full screen while a mini-game runs ── */}
-      {(activeRunnerEvent || activeMemoryEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeDiceCombatEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent) && (
+      {(activeRunnerEvent || activeMemoryEvent || activeTechQuizEvent || activeTechSnakeEvent || activeMinefieldEvent || activeCircuitPuzzleEvent || activeNetworkCardEvent) && (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/85 backdrop-blur-sm">
           <div className="mx-auto w-full max-w-4xl px-4 py-6">
 
@@ -1747,15 +1700,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
                     playerHealth={health}
                     playerMaxHealth={maxHealth}
                     onFinish={(result) => finishMinefield(activeMinefieldEvent, result)}
-                    onDamagePlayer={(dmg) => effectiveInjure(dmg, step)}
-                  />
-                )}
-                {activeDiceCombatEvent && (
-                  <DiceCombatGame
-                    event={activeDiceCombatEvent}
-                    playerHealth={health}
-                    playerMaxHealth={maxHealth}
-                    onFinish={(result) => finishDiceCombat(activeDiceCombatEvent, result)}
                     onDamagePlayer={(dmg) => effectiveInjure(dmg, step)}
                   />
                 )}
@@ -1944,7 +1888,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         )
       })()}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !pendingGameReward && !gameResultPending && !currentStoryEvent && !currentMemoryEvent && configuredNodeItems.length > 0 && (
         <div className="mt-4 rounded border-2 border-amber-400/40 bg-[#211408]/85 p-4 shadow-inner">
           <div className="mb-3 font-semibold text-amber-100">🎁 Objetos en este camino</div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -1977,7 +1921,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
       )}
 
       {/* Always show current node options (no click required) */}
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length > 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length > 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border-2 border-[#8f5728]/80 bg-[#160b08]/80 p-4 shadow-inner">
           <div className="flex flex-col gap-2">
             {configuredDecisions.map((decision, index) => (
@@ -2012,7 +1956,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
         </div>
       )}
 
-      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeDiceCombatEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length === 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
+      {!isDeath && !inCombat && !activeMemoryEvent && !activeRunnerEvent && !activeTechQuizEvent && !activeTechSnakeEvent && !activeMinefieldEvent && !activeCircuitPuzzleEvent && !activeNetworkCardEvent && !pendingGameReward && !gameResultPending && nodeStage === 'initial' && configuredDecisions.length === 0 && !currentStoryEvent && !currentMemoryEvent && !configuredEnding && (
         <div className="mt-4 rounded border border-[#8f5728]/80 bg-[#160b08]/80 p-4 text-sm text-[#ffe7bd]">
           Este nodo no tiene decisiones configuradas en el admin.
         </div>
@@ -2054,7 +1998,7 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
               &#x1F916; Combate contra {combat.enemyName}
             </h5>
           </div>
-          <p className="text-xs text-[#ffe7bd]">Lanzas dados contra el robot. Si tu tirada supera a la suya lo hieres; si no, el te golpea a ti.</p>
+          <p className="text-xs text-[#ffe7bd]">Atacas a {combat.enemyName}. Si no lo derrotas, te devuelve el golpe.</p>
 
           <div className="space-y-2 text-xs text-[#ffe7bd]">
             <div>
@@ -2072,41 +2016,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
             <div>Daño del robot: {combat.enemyDamageMin}&#x2013;{combat.enemyDamageMax}</div>
           </div>
 
-          {/* Dice animation display */}
-          {combatRolling && combatDiceDisplay && (
-            <div className="flex items-center justify-center gap-6 py-2">
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold uppercase text-emerald-400">Tu dado</span>
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-emerald-400/70 bg-emerald-900/60 text-2xl font-black text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.4)]"
-                  style={{ animation: 'pulse 0.1s ease-in-out infinite', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {combatDiceDisplay.player}
-                </div>
-                {bonusDiceActive && (
-                  <span className="text-[9px] text-emerald-400">+dado bonus</span>
-                )}
-              </div>
-              <div className="text-lg font-black text-rose-300">VS</div>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold uppercase text-rose-400">Dado robot</span>
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-lg border-2 border-rose-400/70 bg-rose-900/60 text-2xl font-black text-rose-300 shadow-[0_0_12px_rgba(251,113,133,0.4)]"
-                  style={{ animation: 'pulse 0.1s ease-in-out infinite', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {combatDiceDisplay.enemy}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Bonus die status */}
-          {bonusDiceActive && !combatRolling && (
-            <div className="rounded border border-emerald-500/40 bg-emerald-900/30 px-3 py-1.5 text-center text-xs font-bold text-emerald-300">
-              &#x2728; Dado adicional listo - se usara en el siguiente lanzamiento
-            </div>
-          )}
-
           {/* Special potion active banner */}
           {specialPotionActive && (
             <div className="rounded border border-yellow-400/60 bg-yellow-900/40 px-3 py-1.5 text-center text-xs font-bold text-yellow-200 animate-pulse">
@@ -2115,19 +2024,6 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
           )}
 
           <div className="flex flex-col gap-2 pt-1">
-            {/* Bonus die item button */}
-            {(() => {
-              const bonusDieItem = inventory.find(it => it.type === 'bonus_die')
-              return bonusDieItem && !bonusDiceActive ? (
-                <button
-                  className="w-full rounded border border-yellow-400/40 bg-gradient-to-b from-yellow-600/80 to-yellow-900/80 py-2 text-sm font-black uppercase text-yellow-100 shadow hover:brightness-110"
-                  onClick={() => { setBonusDiceActive(true); dropItem(bonusDieItem.id) }}
-                  disabled={combatRolling}
-                >
-                  &#x1F3B2; Usar Dado Adicional (+1 dado)
-                </button>
-              ) : null
-            })()}
             {specialPotionActive ? (
               <button
                 className="w-full rounded border border-yellow-300/60 bg-gradient-to-b from-yellow-500 to-yellow-800 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110"
@@ -2137,39 +2033,15 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
               </button>
             ) : (
             <button
-              className="w-full rounded border border-emerald-200/30 bg-gradient-to-b from-emerald-600 to-emerald-900 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110 disabled:opacity-50"
-              disabled={combatRolling}
-              onClick={() => {
-                if (combatRolling) return
-                setCombatRolling(true)
-                const bonus = bonusDiceActive ? 1 : 0
-                setBonusDiceActive(false)
-                const startTime = Date.now()
-                if (combatRollingTimerRef.current) clearInterval(combatRollingTimerRef.current)
-                combatRollingTimerRef.current = setInterval(() => {
-                  setCombatDiceDisplay({
-                    player: Math.ceil(Math.random() * 20),
-                    enemy: Math.ceil(Math.random() * 20),
-                  })
-                  if (Date.now() - startTime >= 1100) {
-                    clearInterval(combatRollingTimerRef.current!)
-                    combatRollingTimerRef.current = null
-                    resolveCombatRound(step, bonus)
-                    setTimeout(() => {
-                      setCombatRolling(false)
-                      setCombatDiceDisplay(null)
-                    }, 350)
-                  }
-                }, 80)
-              }}
+              className="w-full rounded border border-emerald-200/30 bg-gradient-to-b from-emerald-600 to-emerald-900 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110"
+              onClick={() => resolveCombatRound()}
             >
-              {combatRolling ? 'Lanzando...' : 'Lanzar dados'}
+              Atacar
             </button>
             )}
             <button
               className="w-full rounded border border-zinc-200/20 bg-gradient-to-b from-zinc-600 to-zinc-900 py-2 text-sm font-black uppercase text-white shadow hover:brightness-110"
               onClick={handleFleeCombat}
-              disabled={combatRolling}
             >
               Huir del combate
             </button>

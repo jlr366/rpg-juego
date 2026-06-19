@@ -8,7 +8,6 @@ import { TechQuizGame, QUESTION_BANK } from '../components/TechQuizGame'
 import { TechSnakeGame } from '../components/TechSnakeGame'
 import { MemoryDuelBoard } from '../components/ExplorationPanel'
 import { MinefieldGame } from '../components/MinefieldGame'
-import { DiceCombatGame, DiceCombatEventConfig } from '../components/DiceCombatGame'
 import { CircuitPuzzleGame, CircuitPuzzleEventConfig, CircuitLevelConfig, CompId, COMP_DEFS, SlotDef } from '../components/CircuitPuzzleGame'
 import { NetworkCardGame, NetworkCardEventConfig } from '../components/NetworkCardGame'
 
@@ -215,7 +214,6 @@ interface StoryConfig {
   quizEvents?: QuizEventConfig[]
   snakeEvents?: SnakeEventConfig[]
   minefieldEvents?: MinefieldEventConfig[]
-  diceCombatEvents?: DiceCombatEventConfig[]
   circuitPuzzleEvents?: CircuitPuzzleEventConfig[]
   circuitLevels?: CircuitLevelConfig[]
   networkCardEvents?: NetworkCardEventConfig[]
@@ -242,7 +240,6 @@ const emptyConfig: StoryConfig = {
   quizEvents: [],
   snakeEvents: [],
   minefieldEvents: [],
-  diceCombatEvents: [],
   circuitPuzzleEvents: [],
   circuitLevels: [],
   networkCardEvents: [],
@@ -803,7 +800,6 @@ export default function AdminPage() {
           quizEvents: data.config?.quizEvents || [],
           snakeEvents: data.config?.snakeEvents || [],
           minefieldEvents: data.config?.minefieldEvents || [],
-          diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
           circuitLevels: data.config?.circuitLevels || [],
           networkCardEvents: data.config?.networkCardEvents || [],
@@ -893,7 +889,6 @@ export default function AdminPage() {
         quizEvents: data.config?.quizEvents || [],
         snakeEvents: data.config?.snakeEvents || [],
         minefieldEvents: data.config?.minefieldEvents || [],
-        diceCombatEvents: data.config?.diceCombatEvents || [],
         circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
         circuitLevels: data.config?.circuitLevels || [],
         networkCardEvents: data.config?.networkCardEvents || [],
@@ -971,7 +966,6 @@ export default function AdminPage() {
           quizEvents: data.config?.quizEvents || [],
           snakeEvents: data.config?.snakeEvents || [],
           minefieldEvents: data.config?.minefieldEvents || [],
-          diceCombatEvents: data.config?.diceCombatEvents || [],
           circuitPuzzleEvents: data.config?.circuitPuzzleEvents || [],
           circuitLevels: data.config?.circuitLevels || [],
           networkCardEvents: data.config?.networkCardEvents || [],
@@ -985,8 +979,8 @@ export default function AdminPage() {
         // Detect if backend dropped any items (key mismatch / orphaned sceneKey)
         const sent = prepared.config
         const lostScenes   = (sent.scenes?.length || 0) - (savedConfig.scenes.length)
-        const lostEvents   = ((sent.storyEvents?.length || 0) + (sent.runnerEvents?.length || 0) + (sent.quizEvents?.length || 0) + (sent.snakeEvents?.length || 0) + (sent.minefieldEvents?.length || 0) + (sent.diceCombatEvents?.length || 0) + (sent.circuitPuzzleEvents?.length || 0) + (sent.networkCardEvents?.length || 0) + (sent.memoryEvents?.length || 0))
-          - ((savedConfig.storyEvents.length) + (savedConfig.runnerEvents.length) + (savedConfig.quizEvents.length) + (savedConfig.snakeEvents.length) + (savedConfig.minefieldEvents.length) + (savedConfig.diceCombatEvents.length) + (savedConfig.circuitPuzzleEvents.length) + (savedConfig.networkCardEvents.length) + (savedConfig.memoryEvents.length))
+        const lostEvents   = ((sent.storyEvents?.length || 0) + (sent.runnerEvents?.length || 0) + (sent.quizEvents?.length || 0) + (sent.snakeEvents?.length || 0) + (sent.minefieldEvents?.length || 0) + (sent.circuitPuzzleEvents?.length || 0) + (sent.networkCardEvents?.length || 0) + (sent.memoryEvents?.length || 0))
+          - ((savedConfig.storyEvents.length) + (savedConfig.runnerEvents.length) + (savedConfig.quizEvents.length) + (savedConfig.snakeEvents.length) + (savedConfig.minefieldEvents.length) + (savedConfig.circuitPuzzleEvents.length) + (savedConfig.networkCardEvents.length) + (savedConfig.memoryEvents.length))
         const lostEnemies  = (sent.enemies?.length || 0) - savedConfig.enemies.length
         const lostItems    = (sent.nodeItems?.length || 0) - savedConfig.nodeItems.length
         const totalLost = lostScenes + lostEvents + lostEnemies + lostItems
@@ -1045,7 +1039,6 @@ export default function AdminPage() {
       quizEvents:          rk(prev.quizEvents as { sceneKey: string }[]) as typeof prev.quizEvents,
       snakeEvents:         rk(prev.snakeEvents as { sceneKey: string }[]) as typeof prev.snakeEvents,
       minefieldEvents:     rk(prev.minefieldEvents as { sceneKey: string }[]) as typeof prev.minefieldEvents,
-      diceCombatEvents:    rk(prev.diceCombatEvents as { sceneKey: string }[]) as typeof prev.diceCombatEvents,
       circuitPuzzleEvents: rk(prev.circuitPuzzleEvents as { sceneKey: string }[]) as typeof prev.circuitPuzzleEvents,
       networkCardEvents:   rk(prev.networkCardEvents as { sceneKey: string }[]) as typeof prev.networkCardEvents,
     }))
@@ -1393,36 +1386,6 @@ export default function AdminPage() {
     }))
   }
 
-  const addDiceCombatToNode = (sceneKey: string) => {
-    const count = (config.diceCombatEvents || []).filter(e => e.sceneKey === sceneKey).length + 1
-    setConfig(prev => ({
-      ...prev,
-      diceCombatEvents: [...(prev.diceCombatEvents || []), {
-        key: `dice${(prev.diceCombatEvents || []).length + 1}`,
-        sceneKey,
-        title: `Combate ${count}`,
-        prompt: 'Lanzas dados contra el enemigo. Si tu tirada supera la suya lo hieres; si no, él te golpea.',
-        enemyName: 'Enemigo',
-        enemyHP: 80,
-        enemyAttack: 18,
-        weakWeapon: '',
-        rewardItemName: '',
-        rewardItemType: 'misc',
-        rewardItemPower: 0,
-        winText: '',
-        loseText: '',
-      }],
-    }))
-    setMessage(`Combate de dados agregado al nodo ${sceneKey}.`)
-  }
-
-  const updateDiceCombatEvent = (index: number, patch: Partial<DiceCombatEventConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      diceCombatEvents: (prev.diceCombatEvents || []).map((e, i) => i === index ? { ...e, ...patch } : e),
-    }))
-  }
-
   const addCircuitPuzzleToNode = (sceneKey: string) => {
     setConfig(prev => ({
       ...prev,
@@ -1606,10 +1569,6 @@ export default function AdminPage() {
     .map((event, index) => ({ event, index }))
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
   const selectedMinefieldEvents = (config.minefieldEvents || [])
-    .map((event, index) => ({ event, index }))
-    .filter(({ event }) => event.sceneKey === selectedSceneKey)
-
-  const selectedDiceCombatEvents = (config.diceCombatEvents || [])
     .map((event, index) => ({ event, index }))
     .filter(({ event }) => event.sceneKey === selectedSceneKey)
 
@@ -2392,7 +2351,6 @@ export default function AdminPage() {
                       <option value="quiz">📋 Quiz AWS</option>
                       <option value="snake">🌐 Snake de Red</option>
                       <option value="minefield">💣 Combate Minesweeper</option>
-                      <option value="dice">🎲 Combate de Dados</option>
                       <option value="circuit">🔌 Laboratorio de Circuito</option>
                       <option value="networkcard">🃏 Duelo de Red AWS</option>
                     </select>
@@ -2404,7 +2362,6 @@ export default function AdminPage() {
                         else if (pendingGame === 'quiz') addQuizEventToNode(selectedSceneKey)
                         else if (pendingGame === 'snake') addSnakeEventToNode(selectedSceneKey)
                         else if (pendingGame === 'minefield') addMinefieldToNode(selectedSceneKey)
-                        else if (pendingGame === 'dice') addDiceCombatToNode(selectedSceneKey)
                         else if (pendingGame === 'circuit') addCircuitPuzzleToNode(selectedSceneKey)
                         else if (pendingGame === 'networkcard') addNetworkCardToNode(selectedSceneKey)
                         setPendingGame('')
@@ -2417,7 +2374,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Juegos asignados al nodo */}
-                  {selectedMemoryEvents.length === 0 && selectedRunnerEvents.length === 0 && selectedQuizEvents.length === 0 && selectedSnakeEvents.length === 0 && selectedMinefieldEvents.length === 0 && selectedDiceCombatEvents.length === 0 && selectedCircuitPuzzleEvents.length === 0 && selectedNetworkCardEvents.length === 0 ? (
+                  {selectedMemoryEvents.length === 0 && selectedRunnerEvents.length === 0 && selectedQuizEvents.length === 0 && selectedSnakeEvents.length === 0 && selectedMinefieldEvents.length === 0 && selectedCircuitPuzzleEvents.length === 0 && selectedNetworkCardEvents.length === 0 ? (
                     <div className="px-1 text-[11px] italic text-slate-500">Sin juegos asignados a este nodo.</div>
                   ) : (
                     <div className="space-y-2">
@@ -2664,53 +2621,6 @@ export default function AdminPage() {
                           {testingCard === `mf-${index}` && (
                             <div className="border-t border-rose-800/30 p-2">
                               <MinefieldGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} playerAttack={10} playerHealth={100} playerMaxHealth={100} onFinish={() => setTestingCard(null)} onDamagePlayer={() => {}} />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {selectedDiceCombatEvents.map(({ event, index }) => (
-                        <div key={`dc-${index}`} className="rounded border border-amber-800/40 bg-slate-900/80">
-                          <div className="flex items-center justify-between border-b border-amber-800/30 px-3 py-1.5">
-                            <span className="text-[11px] font-bold text-amber-300">🎲 Combate de Dados</span>
-                            <div className="flex gap-1">
-                              <button onClick={() => setTestingCard(testingCard === `dc-${index}` ? null : `dc-${index}`)} className={`rounded px-2 py-0.5 text-[10px] font-bold transition ${testingCard === `dc-${index}` ? 'bg-amber-600 text-white' : 'bg-amber-900/60 text-amber-200 hover:bg-amber-700'}`}>{testingCard === `dc-${index}` ? '▲ Cerrar' : '▶ Probar'}</button>
-                              <button onClick={() => setConfig(prev => ({ ...prev, diceCombatEvents: (prev.diceCombatEvents || []).filter((_, i) => i !== index) }))} className="rounded bg-red-700/50 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-600">Eliminar</button>
-                            </div>
-                          </div>
-                          <div className="grid gap-2 p-2 md:grid-cols-2">
-                            <LabeledInput label="Clave" value={event.key || ''} onChange={v => updateDiceCombatEvent(index, { key: v })} placeholder="dc1" />
-                            <LabeledInput label="Nombre enemigo" value={event.enemyName || ''} onChange={v => updateDiceCombatEvent(index, { enemyName: v })} placeholder="Robot Digital" />
-                            <LabeledInput label="Titulo" value={event.title || ''} onChange={v => updateDiceCombatEvent(index, { title: v })} placeholder="Combate" />
-                            <LabeledInput label="Prompt" value={event.prompt || ''} onChange={v => updateDiceCombatEvent(index, { prompt: v })} placeholder="El enemigo te bloquea el paso..." />
-                            <LabeledNumber label="HP enemigo" value={event.enemyHP ?? 80} onChange={v => updateDiceCombatEvent(index, { enemyHP: v })} />
-                            <LabeledNumber label="Ataque enemigo" value={event.enemyAttack ?? 18} onChange={v => updateDiceCombatEvent(index, { enemyAttack: v })} />
-                            <LabeledInput label="Arma debil (opcional)" value={event.weakWeapon || ''} onChange={v => updateDiceCombatEvent(index, { weakWeapon: v })} placeholder="Nombre del arma que lo mata" />
-                            <label className="space-y-1 text-xs font-semibold text-slate-300">
-                              <span>Premio (item)</span>
-                              <select value={event.rewardItemName || ''} onChange={e => {
-                                const it = [...POTION_PRESETS, ...config.equipmentCatalog].find(i => i.name === e.target.value)
-                                updateDiceCombatEvent(index, { rewardItemName: e.target.value, ...(it ? { rewardItemType: it.type, rewardItemSlot: it.slot, rewardItemPower: it.power } : {}) })
-                              }} className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white focus:outline-none">
-                                <option value="">-- Sin premio --</option>
-                                <optgroup label="Equipamiento">
-                                      {config.equipmentCatalog.map(it => (
-                                        <option key={it.name} value={it.name}>{it.name} (+{it.power})</option>
-                                      ))}
-                                    </optgroup>
-                                <optgroup label="Pociones">
-                                  {[...POTION_PRESETS, ...config.nodeItems.filter(it => it.type === 'potion' || it.type === 'consumable')].map(it => (
-                                    <option key={it.name} value={it.name}>{it.name} {it.type === 'consumable' ? '✨' : '🧪'} ({it.type === 'consumable' ? 'especial' : `+${it.power} HP`})</option>
-                                  ))}
-                                </optgroup>
-                              </select>
-                            </label>
-                            <LabeledInput label="Texto si gana" value={event.winText || ''} onChange={v => updateDiceCombatEvent(index, { winText: v })} placeholder="Enemigo derrotado..." />
-                            <LabeledInput label="Texto si pierde" value={event.loseText || ''} onChange={v => updateDiceCombatEvent(index, { loseText: v })} placeholder="El enemigo te venció..." />
-                          </div>
-                          {testingCard === `dc-${index}` && (
-                            <div className="border-t border-amber-800/30 p-2">
-                              <DiceCombatGame event={{ ...event, key: event.key || 'test', sceneKey: event.sceneKey || 'test' }} playerHealth={100} playerMaxHealth={100} onFinish={() => setTestingCard(null)} onDamagePlayer={() => {}} />
                             </div>
                           )}
                         </div>
@@ -3173,32 +3083,6 @@ export default function AdminPage() {
           ))}
         </AdminList>
 
-        <AdminList title="8. Combates de Dados" icon={<Swords className="h-5 w-5 text-amber-300" />} onAdd={undefined}>
-          {(config.diceCombatEvents || []).length === 0 && (
-            <div className="text-sm italic text-slate-500">Sin combates de dados configurados.</div>
-          )}
-          {(config.diceCombatEvents || []).map((event, index) => (
-            <div key={index} className="rounded border border-amber-800/40 bg-slate-900 p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-bold text-amber-300">
-                  🎲 {event.title || '(sin título)'} — nodo <span className="font-mono text-yellow-200">{event.sceneKey || '?'}</span>
-                </span>
-                <button
-                  onClick={() => setConfig(prev => ({ ...prev, diceCombatEvents: (prev.diceCombatEvents || []).filter((_, i) => i !== index) }))}
-                  className="inline-flex items-center gap-1 rounded bg-red-700/60 px-2 py-1 text-xs text-red-200 hover:bg-red-600"
-                >
-                  <Trash2 className="h-3 w-3" /> Eliminar
-                </button>
-              </div>
-              <div className="grid gap-2 text-xs text-slate-400 md:grid-cols-3">
-                <span>Clave: <span className="font-mono text-slate-200">{event.key}</span></span>
-                <span>Nodo: <span className="font-mono text-yellow-300">{event.sceneKey}</span></span>
-                <span>Enemigo: <span className="text-slate-200">{event.enemyName || '(vacío)'}</span></span>
-              </div>
-            </div>
-          ))}
-        </AdminList>
-
         {/* -- Banco de pruebas mini-juegos -- */}
         <section className="rounded-xl border border-violet-500/30 bg-slate-900/80 p-5 shadow-lg">
           <h2 className="mb-1 flex items-center gap-2 text-xl font-bold text-violet-200">
@@ -3219,7 +3103,7 @@ export default function AdminPage() {
 
 // -- Mini-games playground ------------------------------------------------------
 
-type PlaygroundGame = 'runner' | 'memory' | 'quiz' | 'snake' | 'minefield' | 'dice' | 'circuit0' | 'circuit1' | 'circuit2' | 'networkcard'
+type PlaygroundGame = 'runner' | 'memory' | 'quiz' | 'snake' | 'minefield' | 'circuit0' | 'circuit1' | 'circuit2' | 'networkcard'
 
 const MOCK_RUNNER_EVENT = {
   key: 'admin-test', sceneKey: 'test',
@@ -3265,14 +3149,6 @@ const MOCK_MINEFIELD_EVENT = {
   winText: '¡Androide destruido! Prueba superada.', loseText: 'Las trampas te vencieron.',
 }
 
-const MOCK_DICE_EVENT = {
-  key: 'admin-test', sceneKey: 'test',
-  title: 'Combate de Dados - PRUEBA',
-  prompt: 'Lanzas dados contra el enemigo. Si tu tirada supera la suya lo hieres.',
-  enemyName: 'Robot de Prueba', enemyHP: 80, enemyAttack: 18,
-  winText: '¡Enemigo derrotado!', loseText: 'El enemigo te venció.',
-}
-
 const MOCK_CIRCUIT_EVENT_0 = {
   key: 'admin-test', sceneKey: 'test', levelId: 0,
   title: 'Laboratorio de Circuito N1 - PRUEBA',
@@ -3307,7 +3183,6 @@ const GAME_TABS: Array<{ id: PlaygroundGame; label: string; color: string; bg: s
   { id: 'quiz',   label: 'AWS Quiz',         color: 'text-violet-300', bg: 'bg-violet-700/80', border: 'border-violet-500/40' },
   { id: 'snake',  label: 'Network Snake',    color: 'text-green-300',  bg: 'bg-green-700/80',  border: 'border-green-500/40'  },
   { id: 'minefield', label: 'Buscaminas',       color: 'text-rose-300',   bg: 'bg-rose-700/80',   border: 'border-rose-500/40'   },
-  { id: 'dice',      label: 'Combate Dados',    color: 'text-amber-300',  bg: 'bg-amber-700/80',  border: 'border-amber-500/40'  },
   { id: 'circuit0',    label: 'Circuito N1',      color: 'text-emerald-300', bg: 'bg-emerald-700/80',  border: 'border-emerald-500/40'  },
   { id: 'circuit1',    label: 'Circuito N2',      color: 'text-emerald-300', bg: 'bg-emerald-600/80',  border: 'border-emerald-400/40'  },
   { id: 'circuit2',    label: 'Circuito N3',      color: 'text-emerald-200', bg: 'bg-emerald-500/80',  border: 'border-emerald-300/40'  },
@@ -3381,16 +3256,6 @@ function MiniGamesPlayground() {
             <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
           </div>
           <MinefieldGame event={MOCK_MINEFIELD_EVENT} playerAttack={10} playerHealth={100} playerMaxHealth={100} onFinish={() => setActive(null)} onDamagePlayer={() => {}} />
-        </div>
-      )}
-
-      {active === 'dice' && (
-        <div className="rounded-xl border border-amber-500/30 bg-[#1a0f00] p-2">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">🎲 Combate de Dados - Modo Prueba</span>
-            <button onClick={() => setActive(null)} className="rounded bg-slate-700 px-2 py-0.5 text-[10px] text-white hover:bg-slate-600">Cerrar</button>
-          </div>
-          <DiceCombatGame event={MOCK_DICE_EVENT} playerHealth={100} playerMaxHealth={100} onFinish={() => setActive(null)} onDamagePlayer={() => {}} />
         </div>
       )}
 

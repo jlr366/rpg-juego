@@ -172,7 +172,6 @@ const DEFAULT_STORY_CONFIG = {
   quizEvents: [],
   snakeEvents: [],
   minefieldEvents: [],
-  diceCombatEvents: [],
   circuitPuzzleEvents: [],
   circuitLevels: [],
 }
@@ -414,26 +413,6 @@ function normalizeStoryConfig(config) {
             enemyHP: Number.isFinite(Number(ev.enemyHP)) ? Number(ev.enemyHP) : 60,
             enemyAttack: Number.isFinite(Number(ev.enemyAttack)) ? Number(ev.enemyAttack) : 15,
             brainCount: Number.isFinite(Number(ev.brainCount)) ? Math.min(15, Math.max(1, Number(ev.brainCount))) : 6,
-            rewardItemName: typeof ev.rewardItemName === 'string' ? ev.rewardItemName.trim() : '',
-            rewardItemType: typeof ev.rewardItemType === 'string' ? ev.rewardItemType.trim() : 'misc',
-            rewardItemSlot: typeof ev.rewardItemSlot === 'string' ? ev.rewardItemSlot.trim() : '',
-            rewardItemPower: Number.isFinite(Number(ev.rewardItemPower)) ? Number(ev.rewardItemPower) : 0,
-            winText: typeof ev.winText === 'string' ? ev.winText.trim() : '',
-            loseText: typeof ev.loseText === 'string' ? ev.loseText.trim() : '',
-          }))
-          .filter(ev => ev.sceneKey && ev.key && sceneKeys.has(ev.sceneKey))
-      : [],
-    diceCombatEvents: Array.isArray(config?.diceCombatEvents)
-      ? config.diceCombatEvents
-          .map((ev, index) => ({
-            key: typeof ev.key === 'string' && ev.key.trim() ? ev.key.trim() : `dice${index + 1}`,
-            sceneKey: typeof ev.sceneKey === 'string' ? ev.sceneKey.trim() : '',
-            title: typeof ev.title === 'string' ? ev.title.trim() : '',
-            prompt: typeof ev.prompt === 'string' ? ev.prompt.trim() : '',
-            enemyName: typeof ev.enemyName === 'string' && ev.enemyName.trim() ? ev.enemyName.trim() : '',
-            enemyHP: Number.isFinite(Number(ev.enemyHP)) ? Number(ev.enemyHP) : 80,
-            enemyAttack: Number.isFinite(Number(ev.enemyAttack)) ? Number(ev.enemyAttack) : 18,
-            weakWeapon: typeof ev.weakWeapon === 'string' ? ev.weakWeapon.trim() : '',
             rewardItemName: typeof ev.rewardItemName === 'string' ? ev.rewardItemName.trim() : '',
             rewardItemType: typeof ev.rewardItemType === 'string' ? ev.rewardItemType.trim() : 'misc',
             rewardItemSlot: typeof ev.rewardItemSlot === 'string' ? ev.rewardItemSlot.trim() : '',

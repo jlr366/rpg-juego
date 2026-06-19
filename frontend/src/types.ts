@@ -10,7 +10,7 @@
 export interface Item {
   id: string
   name: string
-  type: 'armor' | 'ring' | 'weapon' | 'potion' | 'consumable' | 'accessory' | 'misc' | 'bonus_die'
+  type: 'armor' | 'ring' | 'weapon' | 'potion' | 'consumable' | 'accessory' | 'misc'
   slot?: 'head' | 'chest' | 'legs' | 'ring' | 'weapon' | 'boots'
   power?: number
   description?: string

@@ -24,7 +24,7 @@ interface GameContextType {
 
   combat: any | null
   startCombat: (enemy: any) => void
-  resolveCombatRound: (step: string, bonusDice?: number) => void
+  resolveCombatRound: () => void
   autoWinCombat: () => void
   fleeCombat: () => void
 
@@ -285,7 +285,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCombat(enemy)
   }, [])
 
-  const resolveCombatRound = useCallback((step: string, bonusDice?: number) => {
+  const resolveCombatRound = useCallback(() => {
     if (!combat) return
 
     const equippedWeapon = equipment.weapon?.name?.toLowerCase() || ''
@@ -310,49 +310,42 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (equipment.boots?.power  || 0)
     const defenseReduction = Math.floor(armorPower / 2)
 
-    const baseRoll = Math.floor(Math.random() * 20) + 1
-    const bonusRoll = bonusDice && bonusDice > 0 ? Math.floor(Math.random() * 20) + 1 : 0
-    const playerRoll = bonusRoll > 0 ? Math.max(baseRoll, bonusRoll) : baseRoll
-    const enemyRoll = Math.floor(Math.random() * 20) + 1
+    // Intercambio directo de golpes: tu ataque primero, y si el enemigo
+    // sobrevive, te devuelve el golpe. Sin tiradas ni azar enfrentado.
+    const baseDmg = Math.floor(Math.random() * 15) + 5
+    const damage = baseDmg + weaponPower
+    const newEnemyHealth = combat.enemyHealth - damage
+    const weaponNote = weaponPower > 0 ? ` (+${weaponPower} arma)` : ''
 
-    if (playerRoll > enemyRoll) {
-      const baseDmg = Math.floor(Math.random() * 15) + 5
-      const damage = baseDmg + weaponPower
-      const newEnemyHealth = combat.enemyHealth - damage
+    if (newEnemyHealth <= 0) {
+      setLastCombatResult('enemy_victory')
+      setLastEnemyName(combat.enemyName || 'enemigo')
+      setLastEventTitle(combat.victoryTitle || `Ganador de ${combat.enemyName || 'enemigo'}`)
+      setLog(prev => [...prev, `¡Derrotaste al ${combat.enemyName}! Daño final: ${damage}${weaponNote}`])
+      claimEnemyLoot(combat.enemyKey)
+      setCombat(null)
+      return
+    }
 
-      const weaponNote = weaponPower > 0 ? ` (+${weaponPower} arma)` : ''
-      if (newEnemyHealth <= 0) {
-        setLastCombatResult('enemy_victory')
-        setLastEnemyName(combat.enemyName || 'enemigo')
-        setLastEventTitle(combat.victoryTitle || `Ganador de ${combat.enemyName || 'enemigo'}`)
-        setLog(prev => [...prev, `¡Derrotaste al ${combat.enemyName}! Daño final: ${damage}${weaponNote}`])
-        claimEnemyLoot(combat.enemyKey)
-        setCombat(null)
-      } else {
-        setLog(prev => [...prev, `Golpeas a ${combat.enemyName} por ${damage}${weaponNote}. Vida enemigo: ${newEnemyHealth}`])
-        setCombat({ ...combat, enemyHealth: newEnemyHealth })
-      }
+    const rawDamage =
+      Math.floor(Math.random() * (combat.enemyDamageMax - combat.enemyDamageMin + 1)) +
+      combat.enemyDamageMin
+    const enemyDamage = Math.max(1, rawDamage - defenseReduction)
+    const defNote = defenseReduction > 0 ? ` (bloqueado ${defenseReduction} por armadura)` : ''
+    const newHealth = Math.max(0, health - enemyDamage)
+    setHealth(newHealth)
+    saveHealth(newHealth)
+
+    if (newHealth <= 0) {
+      setLastEnemyName(combat.enemyName || 'enemigo')
+      setLastCombatResult('enemy_defeat')
+      setLastEventTitle(combat.defeatTitle || `Comida de ${combat.enemyName || 'enemigo'}`)
+      setLog(prev => [...prev, `Golpeas a ${combat.enemyName} por ${damage}${weaponNote}, pero ${combat.enemyName || 'el enemigo'} te mata. Daño: ${enemyDamage}${defNote}`])
+      handleDeath(combat.enemyKey)
+      setCombat(null)
     } else {
-      const rawDamage =
-        Math.floor(Math.random() * (combat.enemyDamageMax - combat.enemyDamageMin + 1)) +
-        combat.enemyDamageMin
-      const damage = Math.max(1, rawDamage - defenseReduction)
-
-      const defNote = defenseReduction > 0 ? ` (bloqueado ${defenseReduction} por armadura)` : ''
-      const newHealth = Math.max(0, health - damage)
-      setHealth(newHealth)
-      saveHealth(newHealth)
-
-      if (newHealth <= 0) {
-        setLastEnemyName(combat.enemyName || 'enemigo')
-        setLastCombatResult('enemy_defeat')
-        setLastEventTitle(combat.defeatTitle || `Comida de ${combat.enemyName || 'enemigo'}`)
-        setLog(prev => [...prev, `${combat.enemyName || 'El enemigo'} te mato. Daño: ${damage}${defNote}`])
-        handleDeath(combat.enemyKey)
-        setCombat(null)
-      } else {
-        setLog(prev => [...prev, `${combat.enemyName} te golpea por ${damage}${defNote}. Tu vida: ${newHealth}`])
-      }
+      setLog(prev => [...prev, `Golpeas a ${combat.enemyName} por ${damage}${weaponNote}. Vida enemigo: ${newEnemyHealth}. ${combat.enemyName} te golpea por ${enemyDamage}${defNote}. Tu vida: ${newHealth}`])
+      setCombat({ ...combat, enemyHealth: newEnemyHealth })
     }
   }, [claimEnemyLoot, combat, equipment, health, handleDeath, saveHealth])
 
