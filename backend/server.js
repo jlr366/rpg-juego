@@ -221,7 +221,6 @@ function normalizeStoryConfig(config) {
       sceneKey: typeof decision.sceneKey === 'string' ? decision.sceneKey.trim() : '',
       label: typeof decision.label === 'string' ? decision.label.trim() : '',
       nextSceneKey: typeof decision.nextSceneKey === 'string' ? decision.nextSceneKey.trim() : '',
-      effect: typeof decision.effect === 'string' ? decision.effect.trim() : '',
     }))
     .filter(decision => decision.sceneKey && decision.label)
 

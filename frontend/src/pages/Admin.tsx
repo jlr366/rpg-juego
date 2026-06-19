@@ -31,7 +31,6 @@ interface DecisionConfig {
   sceneKey: string
   label: string
   nextSceneKey: string
-  effect: string
 }
 
 interface EnemyConfig {
@@ -278,7 +277,6 @@ const blankDecision: DecisionConfig = {
   sceneKey: '',
   label: '',
   nextSceneKey: '',
-  effect: '',
 }
 
 const blankEnemy: EnemyConfig = {
@@ -775,15 +773,6 @@ export default function AdminPage() {
       key: `node-${index}-${scene.key || 'empty'}`,
     })),
     [config.scenes]
-  )
-
-  const enemyOptions = useMemo(
-    () => config.enemies.map((enemy, index) => ({
-      value: enemy.sceneKey && enemy.key ? `combat:${enemy.key}` : '',
-      label: `${enemy.sceneKey || '?'} - ${enemy.name || enemy.key || 'enemigo'}`,
-      key: `enemy-${index}-${enemy.sceneKey || 'empty'}-${enemy.key || 'empty'}`,
-    })),
-    [config.enemies]
   )
 
   useEffect(() => {
@@ -2254,7 +2243,6 @@ export default function AdminPage() {
                       <div className="grid gap-1.5">
                         <LabeledInput label="Texto del botón" value={decision.label} onChange={value => updateDecision(index, { label: value })} placeholder="Ir al sector norte" />
                         <LabeledSelect label="Nodo destino" value={decision.nextSceneKey} onChange={value => updateDecision(index, { nextSceneKey: value })} options={[{ value: '', label: '— Elige destino —' }, ...nodeOptions.filter(o => o.value !== selectedSceneKey)]} />
-                        <LabeledSelect label="Evento al llegar" value={decision.effect} onChange={value => updateDecision(index, { effect: value })} options={[{ value: '', label: 'Sin evento' }, { value: 'loot', label: 'Dar objeto aleatorio' }, ...enemyOptions]} />
                       </div>
                     </div>
                   ))}
@@ -2939,12 +2927,6 @@ export default function AdminPage() {
                 <LabeledSelect label="Desde nodo" value={decision.sceneKey} onChange={value => updateDecision(index, { sceneKey: value })} options={nodeOptions} />
                 <LabeledInput label="Texto del botón" value={decision.label} onChange={value => updateDecision(index, { label: value })} placeholder="Caminar más" className="md:col-span-2" />
                 <LabeledSelect label="Va al nodo" value={decision.nextSceneKey} onChange={value => updateDecision(index, { nextSceneKey: value })} options={nodeOptions} />
-                <LabeledSelect
-                  label="Evento opcional"
-                  value={decision.effect}
-                  onChange={value => updateDecision(index, { effect: value })}
-                  options={[{ value: '', label: 'Sin evento' }, { value: 'loot', label: 'Dar objeto aleatorio' }, ...enemyOptions]}
-                />
               </div>
               <button onClick={() => setConfig(prev => ({ ...prev, decisions: prev.decisions.filter((_, i) => i !== index) }))} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-600/80 px-3 py-1.5 text-sm font-semibold shadow transition hover:bg-red-600">
                 <Trash2 className="h-4 w-4" /> Eliminar decisión

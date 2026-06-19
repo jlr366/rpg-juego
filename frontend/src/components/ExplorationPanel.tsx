@@ -54,7 +54,6 @@ interface StoryDecisionConfig {
   sceneKey: string
   label: string
   nextSceneKey: string
-  effect: string
 }
 
 interface StoryEnemyConfig {
@@ -693,32 +692,11 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
   }
 
   const resolveConfiguredDecision = (decision: StoryDecisionConfig) => {
-    const effect = decision.effect.trim().toLowerCase()
     const blockingEnemy = getDecisionBlockingEnemy(decision)
-    if (blockingEnemy && !effect.startsWith('combat:')) {
+    if (blockingEnemy) {
       setBlockedDecision(decision)
       startConfiguredEnemyCombat(blockingEnemy, decision.nextSceneKey || null)
       return
-    }
-
-    if (effect.startsWith('combat:')) {
-      const enemyKey = effect.split(':')[1] || 'enemigo'
-      const configuredEnemy = storyConfig?.enemies?.find(enemy => (
-        enemy.key.toLowerCase() === enemyKey &&
-        (enemy.sceneKey === currentSceneKey || enemy.sceneKey === decision.nextSceneKey)
-      ))
-      startConfiguredEnemyCombat(configuredEnemy || {
-        key: enemyKey,
-        sceneKey: currentSceneKey,
-        name: enemyKey === 'robot' ? 'Robot Anti-Nube' : enemyKey === 'trol' ? 'Robot Anti-Nube' : enemyKey,
-        attack: (enemyKey === 'robot' || enemyKey === 'trol') ? 18 : 12,
-        defense: (enemyKey === 'robot' || enemyKey === 'trol') ? 100 : 60,
-      }, decision.nextSceneKey || null)
-      return
-    }
-
-    if (effect === 'loot') {
-      acquireItem(sampleLootPool())
     }
 
     if (decision.nextSceneKey) {
