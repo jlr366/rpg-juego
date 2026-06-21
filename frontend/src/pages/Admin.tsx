@@ -1774,142 +1774,6 @@ export default function AdminPage() {
           onAutoArrange={autoArrangeFlow}
         />
 
-        {/* ── Laboratorio de Circuitos: niveles personalizados ── */}
-        <div className="rounded-xl border border-emerald-800/30 bg-slate-900/80 px-5 py-4 shadow-lg">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-300">
-              🔌 Laboratorio de Circuitos — Niveles personalizados
-            </h2>
-            <button
-              onClick={addCircuitLevel}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-700/80 px-3 py-1.5 text-xs font-semibold shadow transition hover:bg-emerald-600"
-            >
-              + Crear nivel
-            </button>
-          </div>
-          <p className="mb-4 text-xs text-slate-400">
-            Diseña tu propio circuito: define los slots, qué componente va en cada uno, y qué componentes aparecen disponibles para arrastrar.
-            Luego selecciónalo en cualquier "Laboratorio de Circuito" de un nodo, en el campo Nivel.
-          </p>
-
-          {(config.circuitLevels || []).length === 0 && (
-            <p className="text-xs italic text-slate-500">Sin niveles personalizados todavía. Crea uno para empezar.</p>
-          )}
-
-          <div className="space-y-3">
-            {(config.circuitLevels || []).map((level, index) => {
-              const answeredComps = new Set(level.slots.map(s => s.answer))
-              const missingFromToolbox = level.slots.filter(s => s.answer && !level.toolbox.includes(s.answer))
-              const testCardKey = `cl-${index}`
-              const testEvent: CircuitPuzzleEventConfig = {
-                key: 'test', sceneKey: 'test', customLevelKey: level.key, title: level.name,
-              }
-              return (
-                <div key={level.key || index} className="rounded border border-emerald-800/40 bg-slate-950/60">
-                  <div className="flex items-center justify-between border-b border-emerald-800/30 px-3 py-1.5">
-                    <span className="text-[11px] font-bold text-emerald-300">🎨 {level.name || 'Nivel sin nombre'}</span>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => setTestingCard(testingCard === testCardKey ? null : testCardKey)}
-                        disabled={level.slots.length === 0}
-                        className={`rounded px-2 py-0.5 text-[10px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${testingCard === testCardKey ? 'bg-emerald-600 text-white' : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-700'}`}
-                      >
-                        {testingCard === testCardKey ? '▲ Cerrar' : '▶ Probar'}
-                      </button>
-                      <button onClick={() => deleteCircuitLevel(index)} className="rounded bg-red-700/50 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-600">Eliminar</button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2 p-3 md:grid-cols-2">
-                    <LabeledInput label="Nombre del nivel" value={level.name} onChange={v => updateCircuitLevel(index, { name: v })} placeholder="Defensa de la VPC norte" />
-                    <LabeledInput label="Clave (interna)" value={level.key} onChange={v => updateCircuitLevel(index, { key: v })} placeholder="customcircuit1" />
-                    <label className="space-y-1 text-xs font-semibold text-slate-300 md:col-span-2">
-                      <span>Historia / instrucciones</span>
-                      <textarea value={level.story} onChange={e => updateCircuitLevel(index, { story: e.target.value })} rows={2}
-                        placeholder="Necesitas estos componentes en orden para..."
-                        className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-500/60 focus:outline-none" />
-                    </label>
-                    <LabeledInput label="Título si gana" value={level.winTitle} onChange={v => updateCircuitLevel(index, { winTitle: v })} placeholder="⚡ ¡Circuito completado!" />
-                    <LabeledInput label="Título si pierde" value={level.loseTitle} onChange={v => updateCircuitLevel(index, { loseTitle: v })} placeholder="💥 ¡Sistema comprometido!" />
-                  </div>
-
-                  {/* Slots */}
-                  <div className="border-t border-emerald-800/30 p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Slots ({level.slots.length})</span>
-                      <button onClick={() => addSlotToCircuitLevel(index)} className="rounded bg-emerald-800/60 px-2 py-0.5 text-[10px] font-bold text-emerald-200 hover:bg-emerald-700">+ Añadir slot</button>
-                    </div>
-                    <p className="mb-2 text-[10px] text-slate-500">
-                      <strong>Columna</strong> define el orden de izquierda a derecha. <strong>Fila</strong> 1 = camino principal; usa 2, 3... para crear ramas en paralelo
-                      que cuelgan debajo de la fila 1 en esa misma columna (ej. EC2 en columna 1 fila 1, y Security Group en columna 1 fila 2).
-                    </p>
-                    {level.slots.length === 0 && <p className="text-xs italic text-slate-500">Sin slots. Añade al menos uno.</p>}
-                    <div className="space-y-1.5">
-                      {level.slots.map((slot, slotIndex) => (
-                        <div key={slot.id} className="grid grid-cols-[1fr_1fr_70px_70px_auto_auto] items-end gap-1.5 rounded bg-slate-900/70 p-1.5">
-                          <LabeledInput label="Etiqueta" value={slot.label} onChange={v => updateCircuitLevelSlot(index, slotIndex, { label: v })} placeholder="Firewall web" />
-                          <LabeledSelect
-                            label="Componente correcto"
-                            value={slot.answer}
-                            onChange={v => updateCircuitLevelSlot(index, slotIndex, { answer: v as CompId })}
-                            options={(Object.keys(COMP_DEFS) as CompId[]).map(id => ({ value: id, label: COMP_DEFS[id].label }))}
-                          />
-                          <LabeledNumber label="Columna" value={slot.col} onChange={v => updateCircuitLevelSlot(index, slotIndex, { col: Math.max(1, Math.round(v)) })} />
-                          <LabeledNumber label="Fila" value={slot.row} onChange={v => updateCircuitLevelSlot(index, slotIndex, { row: Math.max(1, Math.round(v)) })} />
-                          <label className="flex items-center gap-1 pb-2 text-[10px] font-semibold text-slate-300">
-                            <input type="checkbox" checked={!!slot.insideVpc} onChange={e => updateCircuitLevelSlot(index, slotIndex, { insideVpc: e.target.checked })} />
-                            Dentro de VPC
-                          </label>
-                          <button onClick={() => deleteCircuitLevelSlot(index, slotIndex)} className="flex h-7 w-7 items-center justify-center rounded bg-red-700/50 text-[10px] font-bold text-red-200 hover:bg-red-600">✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Toolbox */}
-                  <div className="border-t border-emerald-800/30 p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Componentes disponibles para arrastrar ({level.toolbox.length})</span>
-                      {missingFromToolbox.length > 0 && (
-                        <button
-                          onClick={() => updateCircuitLevel(index, { toolbox: Array.from(new Set([...level.toolbox, ...Array.from(answeredComps)])) })}
-                          className="rounded bg-amber-800/60 px-2 py-0.5 text-[10px] font-bold text-amber-200 hover:bg-amber-700"
-                        >
-                          ⚠ Incluir respuestas faltantes
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6">
-                      {(Object.keys(COMP_DEFS) as CompId[]).map(id => (
-                        <label key={id} className={`flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-semibold transition ${level.toolbox.includes(id) ? 'border-emerald-500/50 bg-emerald-900/40 text-emerald-200' : 'border-slate-700/50 bg-slate-900/40 text-slate-400'}`}>
-                          <input type="checkbox" checked={level.toolbox.includes(id)} onChange={() => toggleCircuitLevelToolboxComponent(index, id)} />
-                          {COMP_DEFS[id].label}
-                        </label>
-                      ))}
-                    </div>
-                    {missingFromToolbox.length > 0 && (
-                      <p className="mt-1.5 text-[10px] text-amber-400/80">Falta incluir en la caja de herramientas: {missingFromToolbox.map(s => COMP_DEFS[s.answer]?.label || s.answer).join(', ')}.</p>
-                    )}
-                  </div>
-
-                  {testingCard === testCardKey && level.slots.length > 0 && (
-                    <div className="border-t border-emerald-800/30 p-2">
-                      <CircuitPuzzleGame
-                        event={testEvent}
-                        customLevels={config.circuitLevels}
-                        playerHealth={100}
-                        playerMaxHealth={100}
-                        onFinish={() => setTestingCard(null)}
-                        onDamagePlayer={() => {}}
-                      />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
         {selectedScene && (
           <section className="rounded-xl border border-cyan-400/25 bg-slate-900/90 p-5 shadow-lg">
             <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -2522,6 +2386,142 @@ export default function AdminPage() {
             </div>
           </section>
         )}
+
+        {/* ── Laboratorio de Circuitos: niveles personalizados ── */}
+        <div className="rounded-xl border border-emerald-800/30 bg-slate-900/80 px-5 py-4 shadow-lg">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-emerald-300">
+              🔌 Laboratorio de Circuitos — Niveles personalizados
+            </h2>
+            <button
+              onClick={addCircuitLevel}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-700/80 px-3 py-1.5 text-xs font-semibold shadow transition hover:bg-emerald-600"
+            >
+              + Crear nivel
+            </button>
+          </div>
+          <p className="mb-4 text-xs text-slate-400">
+            Diseña tu propio circuito: define los slots, qué componente va en cada uno, y qué componentes aparecen disponibles para arrastrar.
+            Luego selecciónalo en cualquier "Laboratorio de Circuito" de un nodo, en el campo Nivel.
+          </p>
+
+          {(config.circuitLevels || []).length === 0 && (
+            <p className="text-xs italic text-slate-500">Sin niveles personalizados todavía. Crea uno para empezar.</p>
+          )}
+
+          <div className="space-y-3">
+            {(config.circuitLevels || []).map((level, index) => {
+              const answeredComps = new Set(level.slots.map(s => s.answer))
+              const missingFromToolbox = level.slots.filter(s => s.answer && !level.toolbox.includes(s.answer))
+              const testCardKey = `cl-${index}`
+              const testEvent: CircuitPuzzleEventConfig = {
+                key: 'test', sceneKey: 'test', customLevelKey: level.key, title: level.name,
+              }
+              return (
+                <div key={level.key || index} className="rounded border border-emerald-800/40 bg-slate-950/60">
+                  <div className="flex items-center justify-between border-b border-emerald-800/30 px-3 py-1.5">
+                    <span className="text-[11px] font-bold text-emerald-300">🎨 {level.name || 'Nivel sin nombre'}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setTestingCard(testingCard === testCardKey ? null : testCardKey)}
+                        disabled={level.slots.length === 0}
+                        className={`rounded px-2 py-0.5 text-[10px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${testingCard === testCardKey ? 'bg-emerald-600 text-white' : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-700'}`}
+                      >
+                        {testingCard === testCardKey ? '▲ Cerrar' : '▶ Probar'}
+                      </button>
+                      <button onClick={() => deleteCircuitLevel(index)} className="rounded bg-red-700/50 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-600">Eliminar</button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 p-3 md:grid-cols-2">
+                    <LabeledInput label="Nombre del nivel" value={level.name} onChange={v => updateCircuitLevel(index, { name: v })} placeholder="Defensa de la VPC norte" />
+                    <LabeledInput label="Clave (interna)" value={level.key} onChange={v => updateCircuitLevel(index, { key: v })} placeholder="customcircuit1" />
+                    <label className="space-y-1 text-xs font-semibold text-slate-300 md:col-span-2">
+                      <span>Historia / instrucciones</span>
+                      <textarea value={level.story} onChange={e => updateCircuitLevel(index, { story: e.target.value })} rows={2}
+                        placeholder="Necesitas estos componentes en orden para..."
+                        className="w-full rounded-lg border border-slate-600/60 bg-slate-950/70 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-emerald-500/60 focus:outline-none" />
+                    </label>
+                    <LabeledInput label="Título si gana" value={level.winTitle} onChange={v => updateCircuitLevel(index, { winTitle: v })} placeholder="⚡ ¡Circuito completado!" />
+                    <LabeledInput label="Título si pierde" value={level.loseTitle} onChange={v => updateCircuitLevel(index, { loseTitle: v })} placeholder="💥 ¡Sistema comprometido!" />
+                  </div>
+
+                  {/* Slots */}
+                  <div className="border-t border-emerald-800/30 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Slots ({level.slots.length})</span>
+                      <button onClick={() => addSlotToCircuitLevel(index)} className="rounded bg-emerald-800/60 px-2 py-0.5 text-[10px] font-bold text-emerald-200 hover:bg-emerald-700">+ Añadir slot</button>
+                    </div>
+                    <p className="mb-2 text-[10px] text-slate-500">
+                      <strong>Columna</strong> define el orden de izquierda a derecha. <strong>Fila</strong> 1 = camino principal; usa 2, 3... para crear ramas en paralelo
+                      que cuelgan debajo de la fila 1 en esa misma columna (ej. EC2 en columna 1 fila 1, y Security Group en columna 1 fila 2).
+                    </p>
+                    {level.slots.length === 0 && <p className="text-xs italic text-slate-500">Sin slots. Añade al menos uno.</p>}
+                    <div className="space-y-1.5">
+                      {level.slots.map((slot, slotIndex) => (
+                        <div key={slot.id} className="grid grid-cols-[1fr_1fr_70px_70px_auto_auto] items-end gap-1.5 rounded bg-slate-900/70 p-1.5">
+                          <LabeledInput label="Etiqueta" value={slot.label} onChange={v => updateCircuitLevelSlot(index, slotIndex, { label: v })} placeholder="Firewall web" />
+                          <LabeledSelect
+                            label="Componente correcto"
+                            value={slot.answer}
+                            onChange={v => updateCircuitLevelSlot(index, slotIndex, { answer: v as CompId })}
+                            options={(Object.keys(COMP_DEFS) as CompId[]).map(id => ({ value: id, label: COMP_DEFS[id].label }))}
+                          />
+                          <LabeledNumber label="Columna" value={slot.col} onChange={v => updateCircuitLevelSlot(index, slotIndex, { col: Math.max(1, Math.round(v)) })} />
+                          <LabeledNumber label="Fila" value={slot.row} onChange={v => updateCircuitLevelSlot(index, slotIndex, { row: Math.max(1, Math.round(v)) })} />
+                          <label className="flex items-center gap-1 pb-2 text-[10px] font-semibold text-slate-300">
+                            <input type="checkbox" checked={!!slot.insideVpc} onChange={e => updateCircuitLevelSlot(index, slotIndex, { insideVpc: e.target.checked })} />
+                            Dentro de VPC
+                          </label>
+                          <button onClick={() => deleteCircuitLevelSlot(index, slotIndex)} className="flex h-7 w-7 items-center justify-center rounded bg-red-700/50 text-[10px] font-bold text-red-200 hover:bg-red-600">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Toolbox */}
+                  <div className="border-t border-emerald-800/30 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-emerald-400">Componentes disponibles para arrastrar ({level.toolbox.length})</span>
+                      {missingFromToolbox.length > 0 && (
+                        <button
+                          onClick={() => updateCircuitLevel(index, { toolbox: Array.from(new Set([...level.toolbox, ...Array.from(answeredComps)])) })}
+                          className="rounded bg-amber-800/60 px-2 py-0.5 text-[10px] font-bold text-amber-200 hover:bg-amber-700"
+                        >
+                          ⚠ Incluir respuestas faltantes
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6">
+                      {(Object.keys(COMP_DEFS) as CompId[]).map(id => (
+                        <label key={id} className={`flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-semibold transition ${level.toolbox.includes(id) ? 'border-emerald-500/50 bg-emerald-900/40 text-emerald-200' : 'border-slate-700/50 bg-slate-900/40 text-slate-400'}`}>
+                          <input type="checkbox" checked={level.toolbox.includes(id)} onChange={() => toggleCircuitLevelToolboxComponent(index, id)} />
+                          {COMP_DEFS[id].label}
+                        </label>
+                      ))}
+                    </div>
+                    {missingFromToolbox.length > 0 && (
+                      <p className="mt-1.5 text-[10px] text-amber-400/80">Falta incluir en la caja de herramientas: {missingFromToolbox.map(s => COMP_DEFS[s.answer]?.label || s.answer).join(', ')}.</p>
+                    )}
+                  </div>
+
+                  {testingCard === testCardKey && level.slots.length > 0 && (
+                    <div className="border-t border-emerald-800/30 p-2">
+                      <CircuitPuzzleGame
+                        event={testEvent}
+                        customLevels={config.circuitLevels}
+                        playerHealth={100}
+                        playerMaxHealth={100}
+                        onFinish={() => setTestingCard(null)}
+                        onDamagePlayer={() => {}}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {/* -- Configuración de Mapa -- */}
         <section className="rounded-xl border border-[#6b371d]/80 bg-slate-900/80 p-5 shadow-lg">
