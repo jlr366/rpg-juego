@@ -913,25 +913,6 @@ app.delete('/api/admin/saved-stories/:id', requireAdmin, async (req, res) => {
   }
 })
 
-/* TEMP DEBUG: investigar perdida de equipo al desequipar. Borrar despues. */
-app.get('/api/admin/debug-character/:username', requireAdmin, async (req, res) => {
-  try {
-    const userRes = await pool.query('SELECT id, username FROM users WHERE username = $1', [req.params.username])
-    if (!userRes.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' })
-    const userId = userRes.rows[0].id
-    const charRes = await pool.query('SELECT * FROM characters WHERE user_id = $1', [userId])
-    const charId = charRes.rows[0]?.id
-    if (!charId) return res.status(404).json({ error: 'Personaje no encontrado' })
-    const equipRes = await pool.query('SELECT * FROM equipment WHERE character_id = $1 ORDER BY slot', [charId])
-    const invRes = await pool.query('SELECT * FROM inventory WHERE character_id = $1', [charId])
-    const itemIds = [...new Set([...equipRes.rows.map(r => r.item_id), ...invRes.rows.map(r => r.item_id)].filter(Boolean))]
-    const itemsRes = itemIds.length ? await pool.query('SELECT * FROM items WHERE id = ANY($1::uuid[])', [itemIds]) : { rows: [] }
-    res.json({ userId, charId, character: charRes.rows[0], equipment: equipRes.rows, inventory: invRes.rows, items: itemsRes.rows })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
-
 /* CHARACTER */
 app.get('/api/characters/:userId', async (req, res) => {
   try {
