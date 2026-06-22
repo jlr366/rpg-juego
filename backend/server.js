@@ -10,7 +10,7 @@ const path = require('path')
 
 dotenv.config()
 const app = express()
-const uploadRoot = path.join(__dirname, 'uploads')
+const uploadRoot = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads')
 const storyUploadDir = path.join(uploadRoot, 'story')
 
 fs.mkdirSync(storyUploadDir, { recursive: true })
