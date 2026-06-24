@@ -806,14 +806,9 @@ export const ExplorationPanel: React.FC<{ demoMode?: boolean }> = ({ demoMode = 
     setNodeStage('initial')
     // Pending/blocked navigation
     setPendingAdvance(null)
-    setPendingConfiguredNext(null)
-    setPendingTroll(false)
-    setBlockedDecision(null)
     // All resolved/collected flags
     setCollectedNodeItems({})
     setOpenedChests({})
-    setResolvedConfiguredEnemies({})
-    setFledConfiguredEnemies({})
     setResolvedStoryEvents({})
     setResolvedMemoryEvents({})
     setResolvedRunnerEvents({})
